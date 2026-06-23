@@ -21,6 +21,12 @@
     <button id="btnDrvMonitor"   class="btn btn-action">▶ 開始監控</button>
     <button id="btnDrvLogExport" class="btn btn-action" disabled>⬇ 下載電流 Log (.csv)</button>
     <span   id="drvLogCount" class="drv-log-count">0 筆</span>
+    <div class="sep"></div>
+    <label class="chk-label"><span>向量間隔</span>
+      <input type="range" id="mvInterval" min="10" max="100" value="50" step="5" class="mv-interval-slider">
+      <span id="mvIntervalVal" class="drv-log-count">50 ms</span>
+    </label>
+    <button id="btnMotorVectorMonitor" class="btn btn-action">▶ 向量監控</button>
   </div>
   <div class="app-title">Endex eBike Monitor <span id="appVersion" class="version-badge"></span></div>
 </header>
@@ -43,6 +49,11 @@
     <div class="drv-card"><div class="drv-lbl">Motor Ph.Curr</div> <div id="drvMotorPhaseCurr" class="drv-val">—</div><div class="drv-unit">A</div></div>
     <div class="drv-card"><div class="drv-lbl">Single Trip</div>   <div id="drvSingleTrip"     class="drv-val">—</div><div class="drv-unit">km</div></div>
     <div class="drv-card"><div class="drv-lbl">Remain Dist</div>   <div id="drvRemainDist"     class="drv-val">—</div><div class="drv-unit">km</div></div>
+    <div class="drv-card"><div class="drv-lbl">Rotor Angle</div>  <div id="drvRotorAngle"     class="drv-val">—</div><div class="drv-unit">°</div></div>
+    <div class="drv-card"><div class="drv-lbl">Id</div>           <div id="drvId"             class="drv-val">—</div><div class="drv-unit">A</div></div>
+    <div class="drv-card"><div class="drv-lbl">Iq</div>           <div id="drvIq"             class="drv-val">—</div><div class="drv-unit">A</div></div>
+    <div class="drv-card"><div class="drv-lbl">Vd Cmd</div>       <div id="drvVdCmd"          class="drv-val">—</div><div class="drv-unit">digit</div></div>
+    <div class="drv-card"><div class="drv-lbl">Vq Cmd</div>       <div id="drvVqCmd"          class="drv-val">—</div><div class="drv-unit">digit</div></div>
   </div>
 
   <!-- Register bit displays -->

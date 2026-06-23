@@ -11,8 +11,17 @@ const ble = new BleManager();
 
 ble.onDisconnect = () => {
   stopDrvMonitor();
+  stopMotorVectorMonitor();
   setDot(false);
   log('BLE 連線中斷');
+};
+
+ble.onCanFrame = (id, len, data) => {
+  if      ((id === DRV_RX_FAULT     || id === DRV_RX_FAULT_ALT)    && len >= 6) drvUpdateFault(data);
+  else if ((id === DRV_RX_STATUS    || id === DRV_RX_STATUS_ALT)   && len >= 8) drvUpdateStatus(data);
+  else if ((id === DRV_RX_ASSIST    || id === DRV_RX_ASSIST_ALT)   && len >= 8) drvUpdateAssist(data);
+  else if ((id === DRV_RX_DISTANCE  || id === DRV_RX_DISTANCE_ALT) && len >= 6) drvUpdateDistance(data);
+  else if  (id === DRV_RX_MOTOR_VECTOR                             && len >= 8) drvUpdateMotorVector(data);
 };
 
 // ── Utilities ──────────────────────────────────────────────────
@@ -96,6 +105,59 @@ function stopDrvMonitor() {
   if (drvCurrentLog.length > 1) log('電流 Log: ' + drvCurrentLog.length + ' 筆');
 }
 
+// ── Motor Vector monitoring (independent loop) ─────────────────
+
+let motorVectorMonitorActive = false;
+let motorVectorMonitorTimer  = null;
+
+document.getElementById('mvInterval').addEventListener('input', function () {
+  document.getElementById('mvIntervalVal').textContent = this.value + ' ms';
+});
+
+document.getElementById('btnMotorVectorMonitor').addEventListener('click', () => {
+  if (!ble.isOpen) { alert('請先開啟 BLE 連線'); return; }
+  motorVectorMonitorActive ? stopMotorVectorMonitor() : startMotorVectorMonitor();
+});
+
+function startMotorVectorMonitor() {
+  motorVectorMonitorActive = true;
+  const btn = document.getElementById('btnMotorVectorMonitor');
+  btn.textContent = '⏹ 停止向量';
+  btn.classList.replace('btn-action', 'btn-danger');
+  log('Motor Vector 監控已開啟，間隔 ' + document.getElementById('mvInterval').value + ' ms');
+  motorVectorMonitorLoop();
+}
+
+function stopMotorVectorMonitor() {
+  motorVectorMonitorActive = false;
+  if (motorVectorMonitorTimer) { clearTimeout(motorVectorMonitorTimer); motorVectorMonitorTimer = null; }
+  const btn = document.getElementById('btnMotorVectorMonitor');
+  if (btn) {
+    btn.textContent = '▶ 向量監控';
+    btn.classList.replace('btn-danger', 'btn-action');
+  }
+}
+
+async function motorVectorMonitorLoop() {
+  if (!motorVectorMonitorActive) return;
+  await motorVectorMonitorTick();
+  if (motorVectorMonitorActive) {
+    const interval = parseInt(document.getElementById('mvInterval').value, 10);
+    motorVectorMonitorTimer = setTimeout(motorVectorMonitorLoop, interval);
+  }
+}
+
+async function motorVectorMonitorTick() {
+  if (!ble.isOpen) { stopMotorVectorMonitor(); return; }
+  try {
+    await ble.write(buildDrvStartCmd(document.getElementById('chkPushAssist').checked));
+    await sleep(5);
+    await ble.write(buildDrvMotorVectorReq());
+  } catch { /* ignore errors during motor vector monitoring */ }
+}
+
+// ── Driver Status monitoring loop ──────────────────────────────
+
 async function drvMonitorLoop() {
   if (!drvMonitorActive) return;
   await drvMonitorTick();
@@ -106,49 +168,12 @@ async function drvMonitorTick() {
   if (!ble.isOpen) { stopDrvMonitor(); return; }
   const pushAssist = document.getElementById('chkPushAssist').checked;
   try {
-    // 1. Start command
-    await ble.write(buildDrvStartCmd(pushAssist));
-    await sleep(5);
-
-    // 2. Fault Register
-    ble.clearBuffer();
-    await ble.write(buildDrvFaultReq());
-    await sleep(10);
-    const faultFrame = await ble.readCanFrame(300);
-    if (faultFrame) {
-      const r = parseCanResponse(faultFrame);
-      if (r && r.id === DRV_RX_FAULT && r.len >= 6) drvUpdateFault(r.data);
-    }
-
-    // 3. Status + Speed / Current / Voltage
-    ble.clearBuffer();
-    await ble.write(buildDrvStatusReq());
-    await sleep(10);
-    const statusFrame = await ble.readCanFrame(300);
-    if (statusFrame) {
-      const r = parseCanResponse(statusFrame);
-      if (r && r.id === DRV_RX_STATUS && r.len >= 8) drvUpdateStatus(r.data);
-    }
-
-    // 4. Assist / Pedal
-    ble.clearBuffer();
-    await ble.write(buildDrvAssistReq());
-    await sleep(10);
-    const assistFrame = await ble.readCanFrame(300);
-    if (assistFrame) {
-      const r = parseCanResponse(assistFrame);
-      if (r && r.id === DRV_RX_ASSIST && r.len >= 8) drvUpdateAssist(r.data);
-    }
-
-    // 5. Trip / Distance
-    ble.clearBuffer();
-    await ble.write(buildDrvDistanceReq());
-    await sleep(10);
-    const distFrame = await ble.readCanFrame(300);
-    if (distFrame) {
-      const r = parseCanResponse(distFrame);
-      if (r && r.id === DRV_RX_DISTANCE && r.len >= 6) drvUpdateDistance(r.data);
-    }
+    await ble.write(buildDrvStartCmd(pushAssist));   await sleep(5);
+    await ble.write(buildDrvFaultReq());             await sleep(5);
+    await ble.write(buildDrvStatusReq());            await sleep(5);
+    await ble.write(buildDrvAssistReq());            await sleep(5);
+    await ble.write(buildDrvDistanceReq());          await sleep(5);
+    await ble.write(buildDrvMotorVectorReq());
   } catch { /* ignore errors during monitoring */ }
 }
 
@@ -194,6 +219,14 @@ function drvUpdateAssist(d) {
 function drvUpdateDistance(d) {
   drvSet('drvSingleTrip', ((d[0] | (d[1] << 8)) * 0.1).toFixed(1));
   drvSet('drvRemainDist', ((d[2] | (d[3] << 8)) * 0.1).toFixed(1));
+}
+
+function drvUpdateMotorVector(d) {
+  drvSet('drvRotorAngle', (d[0] | (d[1] << 8)));
+  drvSet('drvId',         ((d[2] | (d[3] << 8)) * 0.1).toFixed(1));
+  drvSet('drvIq',         ((d[4] | (d[5] << 8)) * 0.1).toFixed(1));
+  drvSet('drvVdCmd',      d[6]);
+  drvSet('drvVqCmd',      d[7]);
 }
 
 function drvUpdateBits(containerId, regVal) {

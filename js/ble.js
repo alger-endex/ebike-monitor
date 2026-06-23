@@ -58,6 +58,7 @@ class BleManager {
     this._profileName = null;
     this._rxBuf       = [];
     this.onDisconnect = null;
+    this.onCanFrame   = null;
   }
 
   get deviceInfo() {
@@ -116,6 +117,7 @@ class BleManager {
     this._notifChar.addEventListener('characteristicvaluechanged', (e) => {
       const bytes = new Uint8Array(e.target.value.buffer);
       for (const b of bytes) this._rxBuf.push(b);
+      this._dispatchFrames();
     });
 
     if (this._cfgChar && baudRate) {
@@ -206,6 +208,23 @@ class BleManager {
   }
 
   clearBuffer() { this._rxBuf.length = 0; }
+
+  _dispatchFrames() {
+    while (true) {
+      let start = -1;
+      for (let i = 0; i < this._rxBuf.length - 1; i++) {
+        if (this._rxBuf[i] === 0xFA && this._rxBuf[i + 1] === 0x0D) { start = i; break; }
+      }
+      if (start < 0)                           { this._rxBuf.length = 0; return; }
+      if (this._rxBuf.length < start + 15)     { return; }
+
+      const frame = new Uint8Array(this._rxBuf.splice(0, start + 15).slice(start + 2));
+      if (this.onCanFrame) {
+        const r = parseCanResponse(frame);
+        if (r) this.onCanFrame(r.id, r.len, r.data);
+      }
+    }
+  }
 
   readCanFrame(timeoutMs = 1000) {
     return this._waitFor((buf) => {

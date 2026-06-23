@@ -126,6 +126,13 @@ body {
   white-space: nowrap;
 }
 
+.mv-interval-slider {
+  width: 72px;
+  cursor: pointer;
+  accent-color: var(--cyan);
+  vertical-align: middle;
+}
+
 /* ── Main area ────────────────────────────────────────────────── */
 
 .main-area {
