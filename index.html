@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Endex eBike Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<header class="topbar">
+  <div class="conn-panel">
+    <button id="btnOpen"  class="btn btn-primary">BLE 連線</button>
+    <span   id="statusDot" class="status-dot" title="未連接"></span>
+    <span   id="bleInfo"   class="ble-info" style="display:none"></span>
+    <button id="btnClose" class="btn">關閉</button>
+    <div class="sep"></div>
+    <label class="chk-label"><input type="checkbox" id="chkPushAssist"><span>助行</span></label>
+    <label class="chk-label"><input type="checkbox" id="chkDrvLog"><span>Log 電流</span></label>
+    <button id="btnDrvMonitor"   class="btn btn-action">▶ 開始監控</button>
+    <button id="btnDrvLogExport" class="btn btn-action" disabled>⬇ 下載電流 Log (.csv)</button>
+    <span   id="drvLogCount" class="drv-log-count">0 筆</span>
+  </div>
+  <div class="app-title">Endex eBike Monitor <span id="appVersion" class="version-badge"></span></div>
+</header>
+
+<!-- ── Main area ── -->
+<main class="main-area">
+
+  <!-- Metric cards -->
+  <div class="drv-metrics">
+    <div class="drv-card"><div class="drv-lbl">Bike Speed</div>    <div id="drvBikeSpeed"      class="drv-val">—</div><div class="drv-unit">km/h</div></div>
+    <div class="drv-card"><div class="drv-lbl">Drive Current</div> <div id="drvDriveCurrent"   class="drv-val">—</div><div class="drv-unit">A</div></div>
+    <div class="drv-card"><div class="drv-lbl">Drive Voltage</div> <div id="drvDriveVoltage"   class="drv-val">—</div><div class="drv-unit">V</div></div>
+    <div class="drv-card"><div class="drv-lbl">Driver Temp</div>   <div id="drvDriverTemp"     class="drv-val">—</div><div class="drv-unit">°C</div></div>
+    <div class="drv-card"><div class="drv-lbl">Motor Temp</div>    <div id="drvMotorTemp"      class="drv-val">—</div><div class="drv-unit">°C</div></div>
+    <div class="drv-card"><div class="drv-lbl">Total Assist</div>  <div id="drvTotalAssist"    class="drv-val">—</div><div class="drv-unit">digit</div></div>
+    <div class="drv-card"><div class="drv-lbl">Assist Level</div>  <div id="drvAssistLevel"    class="drv-val">—</div><div class="drv-unit">digit</div></div>
+    <div class="drv-card"><div class="drv-lbl">Pedal Torque</div>  <div id="drvPedalTorque"    class="drv-val">—</div><div class="drv-unit">Nm</div></div>
+    <div class="drv-card"><div class="drv-lbl">Pedal Cadence</div> <div id="drvPedalCadence"   class="drv-val">—</div><div class="drv-unit">rpm</div></div>
+    <div class="drv-card"><div class="drv-lbl">Pedal Power</div>   <div id="drvPedalPower"     class="drv-val">—</div><div class="drv-unit">W</div></div>
+    <div class="drv-card"><div class="drv-lbl">Motor Ph.Curr</div> <div id="drvMotorPhaseCurr" class="drv-val">—</div><div class="drv-unit">A</div></div>
+    <div class="drv-card"><div class="drv-lbl">Single Trip</div>   <div id="drvSingleTrip"     class="drv-val">—</div><div class="drv-unit">km</div></div>
+    <div class="drv-card"><div class="drv-lbl">Remain Dist</div>   <div id="drvRemainDist"     class="drv-val">—</div><div class="drv-unit">km</div></div>
+  </div>
+
+  <!-- Register bit displays -->
+  <div class="drv-registers">
+
+    <!-- Fault Register 12-bit -->
+    <div class="drv-reg-box">
+      <div class="drv-reg-title clickable" id="titleFault">Fault Register (12-bit) ▸</div>
+      <div id="drvFault">
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit0  Over Current Protection</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit1  Over Voltage Protection</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit2  Under Voltage Protection</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit3  Opamp Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit4  Hall Connection Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit5  Phase Line Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit6  E-Lock Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit7  Cadence Sensor Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit8  Torque Sensor Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit9  Throttle Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit10 Hall Transition Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit11 Communication Error</span></div>
+      </div>
+    </div>
+
+    <!-- DRV Register 5-bit -->
+    <div class="drv-reg-box">
+      <div class="drv-reg-title clickable" id="titleDRV">DRV Register (5-bit) ▸</div>
+      <div id="drvDRV">
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit0  Drive Over Temperature</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit1  Motor Over Temperature</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit2  Motor Stuck Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit3  Hub Lock Error</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span><span>bit4  Wheel Sensor Error</span></div>
+      </div>
+    </div>
+
+    <!-- Status Register 8-bit -->
+    <div class="drv-reg-box">
+      <div class="drv-reg-title clickable" id="titleStatus">Drv Status Register (8-bit) ▸</div>
+      <div id="drvStatus">
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit0  Drive Initial (0=init 1=Ready)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit1  Motor (0=Stop 1=Running)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit2  E-Lock (0=Unlock 1=Lock)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit3  Push Assist (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit4  Lock (0=Unlock 1=Lock)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit5  Battery Lock (0=Unlock 1=Lock)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit6  Boost (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit7  Driver Reduction (0=Normal 1=Reduction)</span></div>
+      </div>
+    </div>
+
+    <!-- Peripheral Register 8-bit -->
+    <div class="drv-reg-box">
+      <div class="drv-reg-title clickable" id="titlePepherial">Drv Peripheral Register (8-bit) ▸</div>
+      <div id="drvPepherial">
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit0  Head Light (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit1  Rear Light (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit2  DR Light (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind drv-ok"></span><span>bit3  Break Light (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit4  —</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit5  Brake (0=Off 1=On)</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit6  —</span></div>
+        <div class="drv-bit-row"><span class="drv-bit-ind"></span>       <span>bit7  Kick Stand (0=Up 1=Down)</span></div>
+      </div>
+    </div>
+
+  </div><!-- .drv-registers -->
+</main>
+
+<!-- ── Status log ── -->
+<footer class="statusbar">
+  <textarea id="statusLog" class="status-log" readonly></textarea>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════
+     SetBit modal — register bit viewer
+     ══════════════════════════════════════════════════════ -->
+<div id="modalSetBit" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span id="setbitTitle">位元檢視</span>
+      <button class="modal-x" data-close="modalSetBit">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="setbitGrid" class="setbit-grid"></div>
+      <div id="setbitPreview" class="setbit-preview">HEX: 0x0000   DEC: 0</div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" data-close="modalSetBit">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/ble.js"></script>
+<script src="js/protocol.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
