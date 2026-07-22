@@ -11,13 +11,9 @@
 <!-- ── Top bar ── -->
 <header class="topbar">
   <div class="conn-panel">
-    <button id="btnOpen"  class="btn btn-primary">BLE 連線</button>
+    <button id="btnBleToggle" class="btn btn-primary">BLE 連線</button>
     <span   id="statusDot" class="status-dot" title="未連接"></span>
     <span   id="bleInfo"   class="ble-info" style="display:none"></span>
-    <button id="btnClose" class="btn">關閉</button>
-    <div class="sep"></div>
-    <label class="chk-label"><input type="checkbox" id="chkPushAssist"><span>助行</span></label>
-    <button id="btnDrvMonitor"   class="btn btn-action">▶ 強制啟動</button>
   </div>
   <div class="app-title">Endex eBike Monitor <span id="appVersion" class="version-badge"></span></div>
 </header>
@@ -25,6 +21,9 @@
 <!-- ── 參數列 折疊/展開 ── -->
 <div class="paneltoggle-bar">
   <button id="btnToggleParams" class="btn">▾ 功能鍵</button>
+  <div class="sep"></div>
+  <label class="chk-label"><input type="checkbox" id="chkPushAssist"><span>助行</span></label>
+  <button id="btnDrvMonitor"   class="btn btn-action">▶ 強制啟動</button>
 </div>
 
 <div id="paramsPanel">

@@ -156,6 +156,7 @@ body {
   display: flex;
   align-items: center;
   padding: 3px 12px;
+  gap: 8px;
   flex-shrink: 0;
 }
 

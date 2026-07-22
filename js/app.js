@@ -3,7 +3,7 @@
  * BLE/CAN 即時監控：Driver Status + SetBit 位元檢視
  */
 
-const APP_VERSION = 'v1.1.0';
+const APP_VERSION = 'v1.2.0';
 
 // ── State ──────────────────────────────────────────────────────
 
@@ -67,8 +67,15 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── BLE Connection ─────────────────────────────────────────────
 
-document.getElementById('btnOpen').addEventListener('click', async () => {
-  if (ble.isOpen) { log('BLE 已連線'); return; }
+document.getElementById('btnBleToggle').addEventListener('click', async () => {
+  if (ble.isOpen) {
+    stopDrvMonitor();
+    stopMotorVectorMonitor();
+    await ble.close();
+    setDot(false);
+    log('BLE 連線已關閉');
+    return;
+  }
   try {
     await ble.open({ baudRate: 460800 });
     setDot(true);
@@ -81,24 +88,22 @@ document.getElementById('btnOpen').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('btnClose').addEventListener('click', async () => {
-  stopDrvMonitor();
-  await ble.close();
-  setDot(false);
-  log('BLE 連線已關閉');
-});
-
 function setDot(connected) {
   const dot     = document.getElementById('statusDot');
   const bleInfo = document.getElementById('bleInfo');
+  const btn     = document.getElementById('btnBleToggle');
   dot.classList.toggle('connected',    connected);
   dot.classList.toggle('disconnected', !connected);
   if (connected) {
     const info = ble.deviceInfo;
     bleInfo.textContent = (info.name || 'BLE') + (info.profile ? '  [' + info.profile + ']' : '');
     bleInfo.style.display = '';
+    btn.textContent = '關閉連線';
+    btn.classList.replace('btn-primary', 'btn-danger');
   } else {
     bleInfo.style.display = 'none';
+    btn.textContent = 'BLE 連線';
+    btn.classList.replace('btn-danger', 'btn-primary');
   }
 }
 
