@@ -3,7 +3,7 @@
  * BLE/CAN 即時監控：Driver Status + SetBit 位元檢視
  */
 
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.1.0';
 
 // ── State ──────────────────────────────────────────────────────
 
@@ -16,12 +16,43 @@ ble.onDisconnect = () => {
   log('BLE 連線中斷');
 };
 
+let rxTotalCount      = 0;
+let rxLastTime        = 0;
+let rxIntervalSamples = [];
+let rxMinInterval     = Infinity;
+const RX_AVG_SAMPLES  = 10;
+
+document.getElementById('btnRxTotalReset').addEventListener('click', () => {
+  rxTotalCount      = 0;
+  rxLastTime        = 0;
+  rxIntervalSamples = [];
+  rxMinInterval     = Infinity;
+  document.getElementById('rxTotalCount').textContent  = 0;
+  document.getElementById('rxInterval').textContent    = '— ms';
+  document.getElementById('rxMinInterval').textContent = '— ms';
+});
+
 ble.onCanFrame = (id, len, data) => {
+  const now = Date.now();
+  rxTotalCount++;
+  document.getElementById('rxTotalCount').textContent = rxTotalCount;
+  if (rxLastTime > 0) {
+    const delta = now - rxLastTime;
+    rxIntervalSamples.push(delta);
+    if (rxIntervalSamples.length > RX_AVG_SAMPLES) rxIntervalSamples.shift();
+    const avg = Math.round(rxIntervalSamples.reduce((a, b) => a + b, 0) / rxIntervalSamples.length);
+    document.getElementById('rxInterval').textContent = avg + ' ms';
+    if (delta > 0 && delta < rxMinInterval) {
+      rxMinInterval = delta;
+      document.getElementById('rxMinInterval').textContent = rxMinInterval + ' ms';
+    }
+  }
+  rxLastTime = now;
   if      ((id === DRV_RX_FAULT     || id === DRV_RX_FAULT_ALT)    && len >= 6) drvUpdateFault(data);
   else if ((id === DRV_RX_STATUS    || id === DRV_RX_STATUS_ALT)   && len >= 8) drvUpdateStatus(data);
   else if ((id === DRV_RX_ASSIST    || id === DRV_RX_ASSIST_ALT)   && len >= 8) drvUpdateAssist(data);
   else if ((id === DRV_RX_DISTANCE  || id === DRV_RX_DISTANCE_ALT) && len >= 6) drvUpdateDistance(data);
-  else if  (id === DRV_RX_MOTOR_VECTOR                             && len >= 8) drvUpdateMotorVector(data);
+  else if  (id === DRV_RX_MOTOR_VECTOR                             && len >= 8) { mvRxCount++; mvUpdateCounters(); drvUpdateMotorVector(data); }
 };
 
 // ── Utilities ──────────────────────────────────────────────────
@@ -75,7 +106,6 @@ function setDot(connected) {
 
 let drvMonitorActive = false;
 let drvMonitorTimer  = null;
-const drvCurrentLog  = [];
 
 // last register values — kept for SetBit modal
 let _regFault = 0, _regDRV = 0, _regStatus = 0, _regPeriph = 0;
@@ -88,10 +118,8 @@ document.getElementById('btnDrvMonitor').addEventListener('click', () => {
 function startDrvMonitor() {
   drvMonitorActive = true;
   const btn = document.getElementById('btnDrvMonitor');
-  btn.textContent = '⏹ 停止監控';
+  btn.textContent = '⏹ 停止啟動';
   btn.classList.replace('btn-action', 'btn-danger');
-  drvCurrentLog.length = 0;
-  drvUpdateLogCount();
   log('Driver Status 監控已開啟');
   drvMonitorLoop();
 }
@@ -100,18 +128,28 @@ function stopDrvMonitor() {
   drvMonitorActive = false;
   if (drvMonitorTimer) { clearTimeout(drvMonitorTimer); drvMonitorTimer = null; }
   const btn = document.getElementById('btnDrvMonitor');
-  btn.textContent = '▶ 開始監控';
+  btn.textContent = '▶ 強制啟動';
   btn.classList.replace('btn-danger', 'btn-action');
-  if (drvCurrentLog.length > 1) log('電流 Log: ' + drvCurrentLog.length + ' 筆');
 }
 
 // ── Motor Vector monitoring (independent loop) ─────────────────
 
 let motorVectorMonitorActive = false;
 let motorVectorMonitorTimer  = null;
+let mvTxCount = 0;
+let mvRxCount = 0;
+
+function mvUpdateCounters() {
+  document.getElementById('mvTxCount').textContent = 'TX: ' + mvTxCount;
+  document.getElementById('mvRxCount').textContent = 'RX: ' + mvRxCount;
+}
 
 document.getElementById('mvInterval').addEventListener('input', function () {
   document.getElementById('mvIntervalVal').textContent = this.value + ' ms';
+});
+
+document.getElementById('btnMvCountReset').addEventListener('click', () => {
+  mvTxCount = 0; mvRxCount = 0; mvUpdateCounters();
 });
 
 document.getElementById('btnMotorVectorMonitor').addEventListener('click', () => {
@@ -150,30 +188,76 @@ async function motorVectorMonitorLoop() {
 async function motorVectorMonitorTick() {
   if (!ble.isOpen) { stopMotorVectorMonitor(); return; }
   try {
-    await ble.write(buildDrvStartCmd(document.getElementById('chkPushAssist').checked));
+    await ble.write(buildDrvStartCmd(getStartCmdData()));
     await sleep(5);
+    mvTxCount++; mvUpdateCounters();
     await ble.write(buildDrvMotorVectorReq());
   } catch { /* ignore errors during motor vector monitoring */ }
 }
 
 // ── Driver Status monitoring loop ──────────────────────────────
 
+const DRV_MONITOR_INTERVAL = 1000;
+
 async function drvMonitorLoop() {
   if (!drvMonitorActive) return;
+  const t0 = Date.now();
   await drvMonitorTick();
-  if (drvMonitorActive) drvMonitorTimer = setTimeout(drvMonitorLoop, 300);
+  if (drvMonitorActive) {
+    const remaining = Math.max(0, DRV_MONITOR_INTERVAL - (Date.now() - t0));
+    drvMonitorTimer = setTimeout(drvMonitorLoop, remaining);
+  }
+}
+
+function chkTick(id) { return document.getElementById(id).checked; }
+
+function updateCmdPreview() {
+  const d = getStartCmdData();
+  document.getElementById('cmdPreview').textContent =
+    d.map((v, i) => 'D' + i + ':' + v.toString(16).toUpperCase().padStart(2, '0')).join('  ');
+}
+
+// 監聽 cmdbar 所有控制元件 + topbar 的 chkPushAssist
+document.querySelector('.cmdbar').addEventListener('input',  updateCmdPreview);
+document.querySelector('.cmdbar').addEventListener('change', updateCmdPreview);
+document.getElementById('chkPushAssist').addEventListener('change', updateCmdPreview);
+
+function getStartCmdData() {
+  // D0 Assist Level — bits[2:0], 0~5
+  const d0 = Math.min(5, Math.max(0, parseInt(document.getElementById('cmdAssistLevel').value, 10))) & 0x07;
+  // D1 Push Assist — 0x00 / 0xA5
+  const d1 = document.getElementById('chkPushAssist').checked ? 0xA5 : 0x00;
+  // D2 Light — bit0=前 bit1=後 bit2=左 bit3=右
+  const d2 = (document.getElementById('cmdLightFront').checked  ? 0x01 : 0)
+           | (document.getElementById('cmdLightRear').checked   ? 0x02 : 0)
+           | (document.getElementById('cmdLightLeft').checked   ? 0x04 : 0)
+           | (document.getElementById('cmdLightRight').checked  ? 0x08 : 0);
+  // D3 Switch — 0x00=Idle / 0x5A=Power On / 0xA5=Power Off
+  const d3 = parseInt(document.getElementById('cmdSwitch').value, 10);
+  // D4 Operation — Normal/Boost/Eco/Easy/Navi/Locked
+  const d4 = parseInt(document.getElementById('cmdOperation').value, 10);
+  // D5 Driver Broadcast — 0x00=Disable / 0x01=Enable / 0x02=Mute
+  const d5 = parseInt(document.getElementById('cmdBroadcast').value, 10);
+  // D6 Battery Lock — 0x5A=Unlocked / 0x00=Locked
+  const d6 = parseInt(document.getElementById('cmdBatteryLock').value, 10);
+  // D7 Gear — bits[3:0]=Level, bit5=GearUp, bit6=GearDown
+  const gearLevel = Math.min(15, Math.max(0, parseInt(document.getElementById('cmdGearLevel').value, 10))) & 0x0F;
+  const d7 = gearLevel
+    | (document.getElementById('cmdGearUp').checked   ? 0x20 : 0)
+    | (document.getElementById('cmdGearDown').checked ? 0x40 : 0);
+  return [d0, d1, d2, d3, d4, d5, d6, d7];
 }
 
 async function drvMonitorTick() {
   if (!ble.isOpen) { stopDrvMonitor(); return; }
   const pushAssist = document.getElementById('chkPushAssist').checked;
   try {
-    await ble.write(buildDrvStartCmd(pushAssist));   await sleep(5);
-    await ble.write(buildDrvFaultReq());             await sleep(5);
-    await ble.write(buildDrvStatusReq());            await sleep(5);
-    await ble.write(buildDrvAssistReq());            await sleep(5);
-    await ble.write(buildDrvDistanceReq());          await sleep(5);
-    await ble.write(buildDrvMotorVectorReq());
+    if (chkTick('chkTickStart'))    { await ble.write(buildDrvStartCmd(getStartCmdData())); await sleep(5); }
+    if (chkTick('chkTickFault'))    { await ble.write(buildDrvFaultReq());           await sleep(5); }
+    if (chkTick('chkTickStatus'))   { await ble.write(buildDrvStatusReq());          await sleep(5); }
+    if (chkTick('chkTickAssist'))   { await ble.write(buildDrvAssistReq());          await sleep(5); }
+    if (chkTick('chkTickDistance')) { await ble.write(buildDrvDistanceReq());        await sleep(5); }
+    if (chkTick('chkTickMotorVec')) { mvTxCount++; mvUpdateCounters(); await ble.write(buildDrvMotorVectorReq()); }
   } catch { /* ignore errors during monitoring */ }
 }
 
@@ -201,10 +285,6 @@ function drvUpdateStatus(d) {
   drvSet('drvDriveVoltage', ((d[6] | (d[7] << 8)) * 0.1).toFixed(1));
   drvUpdateBits('drvStatus',    _regStatus);
   drvUpdateBits('drvPepherial', _regPeriph);
-  if (document.getElementById('chkDrvLog').checked) {
-    drvCurrentLog.push({ ts: Date.now(), val: parseFloat(((d[4] | (d[5] << 8)) * 0.1).toFixed(1)) });
-    drvUpdateLogCount();
-  }
 }
 
 function drvUpdateAssist(d) {
@@ -232,34 +312,6 @@ function drvUpdateMotorVector(d) {
 function drvUpdateBits(containerId, regVal) {
   document.querySelectorAll('#' + containerId + ' .drv-bit-ind')
     .forEach((ind, i) => ind.classList.toggle('on', ((regVal >> i) & 1) === 1));
-}
-
-function drvUpdateLogCount() {
-  const n = drvCurrentLog.length;
-  const countEl   = document.getElementById('drvLogCount');
-  const exportBtn = document.getElementById('btnDrvLogExport');
-  if (countEl)   countEl.textContent = n + ' 筆';
-  if (exportBtn) exportBtn.disabled  = n === 0;
-}
-
-document.getElementById('btnDrvLogExport').addEventListener('click', () => {
-  if (!drvCurrentLog.length) return;
-  const t0 = drvCurrentLog[0].ts;
-  let csv = '時間(ms),相對時間(s),Drive Current(A)\r\n';
-  for (const row of drvCurrentLog) {
-    csv += row.ts + ',' + ((row.ts - t0) / 1000).toFixed(3) + ',' + row.val + '\r\n';
-  }
-  const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  downloadText(csv, 'drive_current_' + ts + '.csv');
-  log('電流 Log 已下載，共 ' + drvCurrentLog.length + ' 筆');
-});
-
-function downloadText(text, filename) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
 }
 
 // ── SetBit modal (register bit viewer) ────────────────────────
@@ -351,6 +403,17 @@ document.querySelectorAll('[data-close="modalSetBit"]').forEach(btn => {
   });
 });
 
+// ── Params panel toggle (StartCmd + Tick bar) ──────────────────
+
+document.getElementById('btnToggleParams').addEventListener('click', () => {
+  const panel  = document.getElementById('paramsPanel');
+  const btn    = document.getElementById('btnToggleParams');
+  const hidden = panel.style.display === 'none';
+  panel.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▾ 功能鍵' : '▸ 功能鍵';
+});
+
 // ── Init ───────────────────────────────────────────────────────
 
 document.getElementById('appVersion').textContent = APP_VERSION;
+updateCmdPreview();

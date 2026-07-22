@@ -23,13 +23,13 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* ── Top bar ─────────────────────────────────────────────────── */
 
 .topbar {
-  height: 46px;
+  height: 52px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -55,7 +55,7 @@ body {
 }
 
 .app-title {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--dim);
   white-space: nowrap;
   margin-left: auto;
@@ -63,7 +63,7 @@ body {
 }
 
 .version-badge {
-  font-size: 10px;
+  font-size: 12px;
   background: var(--surface2);
   padding: 1px 5px;
   border-radius: 3px;
@@ -72,13 +72,13 @@ body {
 /* ── Buttons ──────────────────────────────────────────────────── */
 
 .btn {
-  padding: 4px 12px;
+  padding: 5px 14px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface2);
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-family: inherit;
   white-space: nowrap;
   flex-shrink: 0;
@@ -103,7 +103,7 @@ body {
 .status-dot.disconnected { background: #444; }
 
 .ble-info {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--cyan);
   background: rgba(0,212,255,0.1);
   padding: 2px 8px;
@@ -114,14 +114,20 @@ body {
 .chk-label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
+.chk-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--cyan);
+}
+
 .drv-log-count {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--dim);
   white-space: nowrap;
 }
@@ -131,6 +137,99 @@ body {
   cursor: pointer;
   accent-color: var(--cyan);
   vertical-align: middle;
+}
+
+.mv-counter {
+  font-size: 13px;
+  color: var(--cyan);
+  font-family: monospace;
+  white-space: nowrap;
+  min-width: 54px;
+  display: inline-block;
+}
+
+/* ── Panel toggle bar ─────────────────────────────────────────── */
+
+.paneltoggle-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 3px 12px;
+  flex-shrink: 0;
+}
+
+/* ── Cmd bar (StartCmd 參數) ──────────────────────────────────── */
+
+.cmdbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 5px 12px;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 34px;
+}
+
+.cmd-sel {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.cmd-sel:focus { outline: 1px solid var(--cyan); }
+
+.cmd-num {
+  width: 48px;
+  background: var(--surface2);
+  color: var(--cyan);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: monospace;
+  padding: 2px 4px;
+  text-align: center;
+}
+.cmd-num:focus { outline: 1px solid var(--cyan); }
+
+.cmd-preview {
+  font-size: 13px;
+  color: var(--cyan);
+  font-family: monospace;
+  white-space: nowrap;
+  background: var(--bg);
+  padding: 2px 10px;
+  border-radius: 3px;
+  letter-spacing: 0.8px;
+}
+
+/* ── Tick bar ─────────────────────────────────────────────────── */
+
+.tickbar {
+  min-height: 36px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  gap: 8px;
+  row-gap: 6px;
+  flex-shrink: 0;
+}
+
+.tick-lbl {
+  font-size: 12px;
+  color: var(--dim);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* ── Main area ────────────────────────────────────────────────── */
@@ -163,7 +262,7 @@ body {
 }
 
 .drv-lbl {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -171,14 +270,14 @@ body {
 }
 
 .drv-val {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   color: var(--cyan);
   line-height: 1.1;
 }
 
 .drv-unit {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--dim);
   margin-top: 2px;
 }
@@ -199,7 +298,7 @@ body {
 }
 
 .drv-reg-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: bold;
   color: var(--cyan);
   text-transform: uppercase;
@@ -218,12 +317,12 @@ body {
   align-items: center;
   gap: 7px;
   padding: 1px 0;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--dim);
 }
 
 .drv-bit-ind {
-  width: 10px; height: 10px;
+  width: 11px; height: 11px;
   border-radius: 50%;
   background: #2a2a3a;
   border: 1px solid #444;
@@ -262,7 +361,7 @@ body {
   border: none;
   color: var(--dim);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 13px;
   resize: none;
   outline: none;
 }
@@ -297,7 +396,7 @@ body {
   justify-content: space-between;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: bold;
   color: var(--cyan);
 }
@@ -306,7 +405,7 @@ body {
   background: none;
   border: none;
   color: var(--dim);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   line-height: 1;
   padding: 0 2px;
@@ -339,11 +438,11 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .setbit-row input[type="checkbox"] {
-  width: 14px; height: 14px;
+  width: 16px; height: 16px;
   cursor: default;
   accent-color: var(--cyan);
 }
@@ -353,8 +452,71 @@ body {
   padding: 7px 10px;
   background: var(--bg);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--cyan);
   font-family: monospace;
   letter-spacing: 0.5px;
+}
+
+/* ── Responsive (mobile / narrow screens) ────────────────────── */
+
+@media (max-width: 768px) {
+  body { font-size: 16px; }
+
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    row-gap: 6px;
+  }
+
+  .conn-panel {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .app-title {
+    order: -1;
+    width: 100%;
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .paneltoggle-bar,
+  .cmdbar {
+    padding: 6px 8px;
+  }
+
+  .tickbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    row-gap: 6px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 15px;
+    min-height: 40px;
+  }
+
+  .chk-label {
+    gap: 6px;
+  }
+
+  .chk-label input[type="checkbox"],
+  .setbit-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .cmd-sel, .cmd-num {
+    font-size: 15px;
+    padding: 6px;
+    min-height: 36px;
+  }
+
+  .mv-interval-slider {
+    width: 100px;
+  }
 }

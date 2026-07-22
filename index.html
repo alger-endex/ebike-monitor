@@ -17,19 +17,114 @@
     <button id="btnClose" class="btn">關閉</button>
     <div class="sep"></div>
     <label class="chk-label"><input type="checkbox" id="chkPushAssist"><span>助行</span></label>
-    <label class="chk-label"><input type="checkbox" id="chkDrvLog"><span>Log 電流</span></label>
-    <button id="btnDrvMonitor"   class="btn btn-action">▶ 開始監控</button>
-    <button id="btnDrvLogExport" class="btn btn-action" disabled>⬇ 下載電流 Log (.csv)</button>
-    <span   id="drvLogCount" class="drv-log-count">0 筆</span>
-    <div class="sep"></div>
-    <label class="chk-label"><span>向量間隔</span>
-      <input type="range" id="mvInterval" min="10" max="100" value="50" step="5" class="mv-interval-slider">
-      <span id="mvIntervalVal" class="drv-log-count">50 ms</span>
-    </label>
-    <button id="btnMotorVectorMonitor" class="btn btn-action">▶ 向量監控</button>
+    <button id="btnDrvMonitor"   class="btn btn-action">▶ 強制啟動</button>
   </div>
   <div class="app-title">Endex eBike Monitor <span id="appVersion" class="version-badge"></span></div>
 </header>
+
+<!-- ── 參數列 折疊/展開 ── -->
+<div class="paneltoggle-bar">
+  <button id="btnToggleParams" class="btn">▾ 功能鍵</button>
+</div>
+
+<div id="paramsPanel">
+<!-- ── StartCmd 參數列 ── -->
+<div class="cmdbar">
+  <span class="tick-lbl">StartCmd：</span>
+
+  <!-- D0 Assist Level -->
+  <label class="chk-label"><span>D0 助力</span>
+    <input type="number" id="cmdAssistLevel" min="0" max="5" value="1" class="cmd-num">
+  </label>
+  <div class="sep"></div>
+
+  <!-- D2 Light (D1 Push Assist 沿用 topbar chkPushAssist) -->
+  <span class="tick-lbl">D2 燈：</span>
+  <label class="chk-label"><input type="checkbox" id="cmdLightFront"><span>前</span></label>
+  <label class="chk-label"><input type="checkbox" id="cmdLightRear"><span>後</span></label>
+  <label class="chk-label"><input type="checkbox" id="cmdLightLeft"><span>左</span></label>
+  <label class="chk-label"><input type="checkbox" id="cmdLightRight"><span>右</span></label>
+  <div class="sep"></div>
+
+  <!-- D3 Switch -->
+  <label class="chk-label"><span>D3 Switch</span>
+    <select id="cmdSwitch" class="cmd-sel">
+      <option value="0">Idle</option>
+      <option value="90" selected>Power On</option>
+      <option value="165">Power Off</option>
+    </select>
+  </label>
+  <div class="sep"></div>
+
+  <!-- D4 Operation -->
+  <label class="chk-label"><span>D4 Mode</span>
+    <select id="cmdOperation" class="cmd-sel">
+      <option value="0" selected>Normal</option>
+      <option value="90">Boost</option>
+      <option value="236">Eco</option>
+      <option value="234">Easy</option>
+      <option value="174">Navi</option>
+      <option value="165">Locked</option>
+    </select>
+  </label>
+  <div class="sep"></div>
+
+  <!-- D5 Driver Broadcast -->
+  <label class="chk-label"><span>D5 Bcast</span>
+    <select id="cmdBroadcast" class="cmd-sel">
+      <option value="0" selected>Disable</option>
+      <option value="1">Enable</option>
+      <option value="2">Mute</option>
+    </select>
+  </label>
+  <div class="sep"></div>
+
+  <!-- D6 Battery Lock -->
+  <label class="chk-label"><span>D6 Battery</span>
+    <select id="cmdBatteryLock" class="cmd-sel">
+      <option value="90">Unlocked</option>
+      <option value="0" selected>Locked</option>
+    </select>
+  </label>
+  <div class="sep"></div>
+
+  <!-- D7 Gear -->
+  <span class="tick-lbl">D7 Gear：</span>
+  <input type="number" id="cmdGearLevel" min="0" max="15" value="0" class="cmd-num">
+  <label class="chk-label"><input type="checkbox" id="cmdGearUp"><span>GUp</span></label>
+  <label class="chk-label"><input type="checkbox" id="cmdGearDown"><span>GDn</span></label>
+  <div class="sep"></div>
+  <span id="cmdPreview" class="cmd-preview">D0:01 D1:00 D2:00 D3:5A D4:00 D5:00 D6:00 D7:00</span>
+</div>
+
+<!-- ── Tick 項目選擇列 ── -->
+<nav class="tickbar">
+  <span class="tick-lbl">Tick 項目：</span>
+  <label class="chk-label"><input type="checkbox" id="chkTickStart"    checked><span>Start</span></label>
+  <label class="chk-label"><input type="checkbox" id="chkTickFault"           ><span>Fault</span></label>
+  <label class="chk-label"><input type="checkbox" id="chkTickStatus"         ><span>Status</span></label>
+  <label class="chk-label"><input type="checkbox" id="chkTickAssist"         ><span>Assist</span></label>
+  <label class="chk-label"><input type="checkbox" id="chkTickDistance"       ><span>Distance</span></label>
+  <label class="chk-label"><input type="checkbox" id="chkTickMotorVec"       ><span>Motor Vec</span></label>
+  <div class="sep"></div>
+  <label class="chk-label"><span>向量間隔</span>
+    <input type="range" id="mvInterval" min="10" max="100" value="50" step="5" class="mv-interval-slider">
+    <span id="mvIntervalVal" class="drv-log-count">50 ms</span>
+  </label>
+  <button id="btnMotorVectorMonitor" class="btn btn-action">▶ 向量監控</button>
+  <span id="mvTxCount" class="mv-counter">TX: 0</span>
+  <span id="mvRxCount" class="mv-counter">RX: 0</span>
+  <button id="btnMvCountReset" class="btn">↺</button>
+  <div class="sep"></div>
+  <span class="tick-lbl">All RX：</span>
+  <span id="rxTotalCount" class="mv-counter">0</span>
+  <span class="tick-lbl">間隔：</span>
+  <span id="rxInterval" class="mv-counter">— ms</span>
+  <span class="tick-lbl">最短：</span>
+  <span id="rxMinInterval" class="mv-counter">— ms</span>
+  <button id="btnRxTotalReset" class="btn">↺</button>
+</nav>
+</div><!-- #paramsPanel -->
 
 <!-- ── Main area ── -->
 <main class="main-area">

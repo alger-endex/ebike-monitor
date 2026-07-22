@@ -27,9 +27,10 @@ function parseCanResponse(bytes) {
 
 // ── Driver Status CAN builders ────────────────────────────────
 
-// Start command — data[1]: 0x00=normal, 0xA5=push assist
-function buildDrvStartCmd(pushAssist) {
-  return buildToolRPacket(0x141030FF, [0x01, pushAssist ? 0xA5 : 0x00, 0x00, 0x5A, 0, 0, 0, 0]);
+// Start command — data8: [D0 AssistLevel, D1 PushAssist, D2 Light, D3 Switch,
+//                          D4 Operation,  D5 Broadcast,  D6 BatLock, D7 Gear]
+function buildDrvStartCmd(data8) {
+  return buildToolRPacket(0x141030FF, data8);
 }
 
 // Fault Register request  → RX ID 0x10235030  6 bytes
