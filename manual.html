@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.3.0</span>
-      <span class="pill cyan">手冊版本 v1.5（見第 13 節）</span>
+      <span class="pill cyan">手冊版本 v1.6（見第 13 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -536,6 +536,12 @@
         </div>
         <p>啟動後以瀏覽器開啟 <code>http://localhost:8080</code>。瀏覽器需為 Chrome 或 Edge（支援 Web
           Bluetooth API），且電腦藍牙需已開啟並在裝置有效範圍內。</p>
+
+        <div class="callout warn" style="margin-top:14px">
+          <strong>手機瀏覽器：介面支援，但僅限 Android。</strong> 版面本身可以在手機寬度正常操作（按鈕、彈窗、卡片都會自動改成適合小螢幕的排列），
+          但 Web Bluetooth API 只有 Android 上的 Chrome／Edge 支援——iOS／iPadOS 的 Safari（含所有 iOS 上的第三方瀏覽器，底層都是 Safari
+          引擎）完全沒有實作 Web Bluetooth，不管畫面多合適都無法連線，這是瀏覽器限制，不是本程式的問題。
+        </div>
       </section>
 
       <!-- 03 ─────────────────────────────────────────────── -->
@@ -949,6 +955,18 @@
         <div class="sec-hd"><span class="sec-num">13</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.6</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>UI 手機相容性修正</h4>
+              <ul>
+                <li>電池資訊彈窗原本寫死 <code>min-width: 640px</code>，跟彈窗本身 <code>max-width: 90vw</code> 衝突，在手機寬度會被截斷；改成 <code>min(640px, 94vw)</code> 後不再超出視窗。</li>
+                <li>電池 1／電池 2 兩欄在窄螢幕（≤768px）改為單欄上下堆疊，不再被擠壓。</li>
+                <li>狀態記錄列在窄螢幕高度從 90px 收到 64px，讓卡片與暫存器區域有更多可視空間；版面高度改採 <code>100dvh</code>（保留 <code>100vh</code> 為備援），減少手機瀏覽器網址列收合展開造成的版面跳動。</li>
+                <li>第 02 節新增手機瀏覽器支援範圍說明：介面本身能在手機寬度正常操作，但 Web Bluetooth 僅 Android 版 Chrome／Edge 支援，iOS／iPadOS 的 Safari（含 iOS 上所有第三方瀏覽器）完全無法連線，屬瀏覽器層級限制。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v1.5</span><span class="change-date">2026-09-11</span></div>
             <div class="change-body">

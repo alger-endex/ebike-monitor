@@ -22,6 +22,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   font-size: 14px;
 }
@@ -494,7 +495,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 
 /* ── Battery Info modal ───────────────────────────────────────── */
 
-.modal-box-wide { min-width: 640px; }
+.modal-box-wide { min-width: min(640px, 94vw); }
 
 .battery-note {
   color: var(--dim);
@@ -611,5 +612,13 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 
   .mv-interval-slider {
     width: 100px;
+  }
+
+  .statusbar {
+    height: 64px;
+  }
+
+  .battery-cols {
+    grid-template-columns: 1fr;
   }
 }
