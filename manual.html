@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.3.2</span>
-      <span class="pill cyan">手冊版本 v2.0（見第 13 節）</span>
+      <span class="pill cyan">手冊版本 v2.1（見第 13 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -955,6 +955,25 @@
         <div class="sec-hd"><span class="sec-num">13</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v2.1</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>修正功能鍵列在手機上橫向溢出、把整頁撐寬的問題</h4>
+              <ul>
+                <li>找到真正殘留的根因：<code>.paneltoggle-bar</code>（「功能鍵／助行／強制啟動／開始記錄／操作說明書」那一列）
+                  從來沒有設定 <code>flex-wrap: wrap</code>，窄螢幕下這一列本身就會整排橫向溢出，不會自動換行。</li>
+                <li>更深一層的原因：<code>body</code> 是 flex column，它的每個直屬子項（頂列、功能鍵列、
+                  <code>#paramsPanel</code>、main-area、狀態列）預設 <code>min-width:auto</code>，
+                  只要任一子項內含一段不換行的內容（例如 StartCmd 參數預覽那串 hex 文字）比螢幕寬，就會把
+                  <code>body</code> 整個撐寬，其餘列即使自己有 <code>flex-wrap</code> 也會因為「可用寬度」被撐大而該換行卻沒換行——
+                  這跟先前 v1.8 修正的 <code>main-area</code> 垂直方向 <code>min-height:auto</code> 是同一種 flexbox 陷阱，只是這次發生在水平方向。</li>
+                <li>修法：<code>.paneltoggle-bar</code> 補上 <code>flex-wrap:wrap</code>；手機斷點內幫 body 的每個直屬子項都補上
+                  <code>min-width:0</code>；StartCmd 參數預覽（<code>.cmd-preview</code>）加上
+                  <code>overflow-x:auto</code>，長度超過螢幕時自己捲動而不是撐寬整頁。</li>
+                <li>這次用固定寬度的隔離測試環境（393px／360px）實際驗證過排版不再溢出，才確認修正有效。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v2.0</span><span class="change-date">2026-09-11</span></div>
             <div class="change-body">

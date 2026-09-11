@@ -157,6 +157,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   padding: 3px 12px;
   gap: 8px;
@@ -556,7 +557,39 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 /* ── Responsive (mobile / narrow screens) ────────────────────── */
 
 @media (max-width: 768px) {
-  body { font-size: 16px; }
+  /* 手機控制項多，功能鍵面板展開時光是頂列＋StartCmd＋Tick 列就可能超過整個螢幕高度。
+     桌機用「固定滿版高度＋main-area 內部捲動」撐得住，手機改成讓整頁自然捲動，
+     避免 main-area 被壓成看不到的一條縫。 */
+  body {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+    font-size: 16px;
+  }
+
+  /* body 的每個直屬 flex 子項都要有 min-width:0，否則跟 min-height:auto 同樣道理，
+     子項的 min-content 寬度（例如一長串不換行的按鈕／hex 預覽）會把 body 撐寬過螢幕，
+     所有其他列即使各自有 flex-wrap 也會因為可用寬度被撐大而「該換行卻沒換行」，
+     視覺上就是整頁被橫向推出畫面、右側內容整段看不到。 */
+  .topbar,
+  .paneltoggle-bar,
+  #paramsPanel,
+  .cmdbar,
+  .tickbar,
+  .main-area,
+  .statusbar {
+    min-width: 0;
+  }
+
+  .main-area {
+    overflow-y: visible;
+  }
+
+  .cmd-preview {
+    max-width: 100%;
+    overflow-x: auto;
+  }
 
   .topbar {
     height: auto;
