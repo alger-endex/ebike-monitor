@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endex eBike Monitor 操作手冊</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:      #f2f3f9;
+    --surface:    #ffffff;
+    --surface2:   #e9ebf6;
+    --ink:        #171b2e;
+    --ink-dim:    #4b5170;
+    --ink-faint:  #7a80a0;
+    --border:     #d9dcec;
+    --accent:     #c81e42;
+    --accent-ink: #ffffff;
+    --accent-soft:#fbe3e8;
+    --cyan:       #007490;
+    --cyan-soft:  #dff2f6;
+    --ok:         #0d8a4f;
+    --ok-soft:    #e1f5e9;
+    --code-bg:    #12162a;
+    --code-ink:   #dfe2f5;
+    --code-dim:   #8890b8;
+    --code-accent:#ff6b81;
+    --code-cyan:  #4fd8ff;
+    --code-border:#2a2f4a;
+    --shadow: 0 1px 2px rgba(23,27,46,.06), 0 8px 24px -12px rgba(23,27,46,.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #1a1a2e;
+      --surface:    #16213e;
+      --surface2:   #0f3460;
+      --ink:        #e6e8f5;
+      --ink-dim:    #ccd0e2;
+      --ink-faint:  #8b90b0;
+      --border:     #2a2a4a;
+      --accent:     #e94560;
+      --accent-ink: #ffffff;
+      --accent-soft:rgba(233,69,96,.16);
+      --cyan:       #00d4ff;
+      --cyan-soft:  rgba(0,212,255,.14);
+      --ok:         #00c853;
+      --ok-soft:    rgba(0,200,83,.14);
+      --code-bg:    #0d1120;
+      --code-ink:   #dfe2f5;
+      --code-dim:   #8b90b0;
+      --code-accent:#ff6b81;
+      --code-cyan:  #4fd8ff;
+      --code-border:#242a48;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #1a1a2e;
+    --surface:    #16213e;
+    --surface2:   #0f3460;
+    --ink:        #e6e8f5;
+    --ink-dim:    #ccd0e2;
+    --ink-faint:  #8b90b0;
+    --border:     #2a2a4a;
+    --accent:     #e94560;
+    --accent-ink: #ffffff;
+    --accent-soft:rgba(233,69,96,.16);
+    --cyan:       #00d4ff;
+    --cyan-soft:  rgba(0,212,255,.14);
+    --ok:         #00c853;
+    --ok-soft:    rgba(0,200,83,.14);
+    --code-bg:    #0d1120;
+    --code-ink:   #dfe2f5;
+    --code-dim:   #8b90b0;
+    --code-accent:#ff6b81;
+    --code-cyan:  #4fd8ff;
+    --code-border:#242a48;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Serif', Georgia, 'Noto Serif TC', serif;
+    font-size: 16.5px;
+    line-height: 1.7;
+    padding: 0 20px;
+  }
+  h1, h2, h3, .eyebrow, .toc, .btn-preview, button, .pill {
+    font-family: 'IBM Plex Sans', 'Noto Sans TC', system-ui, sans-serif;
+  }
+  code, .mono, .spec-table td.val, .hexline, .frame-diagram, .term {
+    font-family: 'IBM Plex Mono', 'Cascadia Mono', Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  h1, h2, h3 { text-wrap: balance; }
+  a { color: var(--cyan); }
+
+  .shell { max-width: 1180px; margin: 0 auto; }
+
+  /* ── Masthead ─────────────────────────────────────────────── */
+  .masthead {
+    padding-block: 40px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .masthead-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .status-led {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 6px var(--ok);
+    flex-shrink: 0;
+  }
+  .eyebrow {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  h1.title {
+    font-size: clamp(28px, 4.4vw, 42px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -.01em;
+    margin: 2px 0 0;
+  }
+  .subtitle {
+    max-width: 62ch;
+    color: var(--ink-dim);
+    font-size: 16px;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .pill {
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .pill.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .pill.cyan   { background: var(--cyan-soft); color: var(--cyan); border-color: transparent; }
+
+  /* ── Layout: sidebar + content ───────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0,1fr);
+    gap: 48px;
+    padding-block: 32px 64px;
+    align-items: start;
+  }
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13.5px;
+  }
+  nav.toc .toc-hd {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  nav.toc a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    padding: 6px 10px 6px 12px;
+    border-left: 2px solid transparent;
+    border-radius: 0 6px 6px 0;
+    display: flex;
+    gap: 8px;
+  }
+  nav.toc a .num { color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; }
+  nav.toc a:hover { background: var(--surface2); color: var(--ink); }
+  nav.toc a.active { border-left-color: var(--accent); color: var(--ink); background: var(--surface2); font-weight: 500; }
+
+  details.toc-mobile { display: none; }
+
+  main { min-width: 0; display: flex; flex-direction: column; gap: 64px; }
+
+  section { scroll-margin-top: 20px; }
+  section .sec-hd {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  section .sec-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  section h2 {
+    font-size: 23px;
+    font-weight: 700;
+    margin: 0;
+  }
+  section .sec-desc { color: var(--ink-dim); max-width: 68ch; margin-bottom: 18px; }
+  section h3 {
+    font-size: 15.5px;
+    font-weight: 600;
+    margin: 26px 0 10px;
+    color: var(--ink);
+  }
+  p { max-width: 68ch; }
+  ul, ol { max-width: 66ch; padding-left: 22px; }
+  li + li { margin-top: 6px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 14px; }
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--cyan);
+    background: var(--cyan-soft);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+  .callout.warn { border-left-color: var(--accent); background: var(--accent-soft); }
+  .callout p, .callout ul { margin: 0; max-width: none; }
+  .callout strong { color: var(--accent); }
+  .callout.warn strong { color: var(--accent); }
+
+  /* ── spec / key-value tables ─────────────────────────────── */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+  table.spec-table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 480px; }
+  table.spec-table th, table.spec-table td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.spec-table thead th {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; background: var(--surface2);
+  }
+  table.spec-table tbody tr:last-child td { border-bottom: none; }
+  table.spec-table td.key { font-family: 'IBM Plex Mono', monospace; color: var(--accent); white-space: nowrap; font-weight: 500; }
+  table.spec-table td.val { color: var(--ink-dim); white-space: nowrap; }
+  table.spec-table tr.diff td { background: var(--accent-soft); }
+
+  /* ── register / bit indicator grid ───────────────────────── */
+  .bitgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 6px 18px;
+  }
+  .bitrow { display: flex; align-items: center; gap: 8px; font-size: 13.5px; padding: 3px 0; }
+  .led { width: 10px; height: 10px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); flex-shrink: 0; }
+  .led.fault { background: var(--accent); box-shadow: 0 0 5px var(--accent); border-color: transparent; }
+  .led.ok    { background: var(--ok); box-shadow: 0 0 5px var(--ok); border-color: transparent; }
+  .bitrow .bitname { color: var(--ink-dim); }
+  .bitrow .bitnum { font-family: 'IBM Plex Mono', monospace; color: var(--ink-faint); font-size: 12px; min-width: 34px; }
+  .reg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; }
+  .reg-box h4 { font-size: 13.5px; margin: 0 0 10px; display:flex; align-items:center; gap:8px; }
+  .reg-box .legend { font-size: 11.5px; color: var(--ink-faint); font-weight: 400; }
+
+  /* ── button chip (mirrors app buttons) ───────────────────── */
+  .btn-preview {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500;
+    padding: 4px 11px; border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--surface2); color: var(--ink);
+  }
+  .btn-preview.on  { background: #1b5e20; border-color: #43a047; color: #eafbea; }
+  .btn-preview.off { background: #7a1414; border-color: #b71c1c; color: #ffeaea; }
+  .btn-preview.blue{ background: #1565c0; border-color: #1e88e5; color: #eaf3ff; }
+
+  /* ── code / frame diagrams (fixed dark terminal panel) ───── */
+  .code-panel {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    color: var(--code-ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .code-panel .cmt { color: var(--code-dim); }
+  .code-panel .hl  { color: var(--code-accent); }
+  .code-panel .hl2 { color: var(--code-cyan); }
+  .code-panel pre { margin: 0; white-space: pre; }
+
+  .frame-diagram { display: flex; flex-wrap: wrap; gap: 3px; margin: 14px 0; }
+  .frame-diagram .byte {
+    background: var(--code-bg); color: var(--code-ink);
+    border: 1px solid var(--code-border);
+    border-radius: 5px;
+    font-size: 11.5px;
+    padding: 7px 4px;
+    min-width: 56px;
+    text-align: center;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .frame-diagram .byte .b { font-weight: 600; }
+  .frame-diagram .byte .l { color: var(--code-dim); font-size: 10px; letter-spacing: .02em; }
+  .frame-diagram .byte.hdr { border-color: var(--code-accent); color: var(--code-accent); }
+  .frame-diagram .byte.hdr .b { color: var(--code-accent); }
+  .frame-diagram .byte.id  { border-color: var(--code-cyan); }
+  .frame-diagram .byte.id .b { color: var(--code-cyan); }
+  .frame-diagram .byte.payload { opacity: .82; }
+
+  /* ── two/three col feature grid ──────────────────────────── */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; }
+  .feat h4 { margin: 0 0 6px; font-size: 14.5px; display:flex; align-items:center; gap:7px; }
+  .feat p  { margin: 0; font-size: 13.5px; color: var(--ink-dim); max-width: none; }
+  .feat .tag { font-family:'IBM Plex Mono',monospace; font-size:11px; color: var(--cyan); }
+
+  /* ── troubleshooting ──────────────────────────────────────── */
+  .issue { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+  .issue + .issue { margin-top: 12px; }
+  .issue-hd { padding: 13px 18px; font-weight: 600; font-size: 14.5px; font-family: 'IBM Plex Sans', sans-serif; background: var(--surface2); display:flex; align-items:center; gap:10px; }
+  .issue-hd .sev { width: 8px; height: 8px; border-radius: 50%; flex-shrink:0; }
+  .issue-hd .sev.high { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+  .issue-hd .sev.mid  { background: #e0a800; box-shadow: 0 0 5px #e0a800; }
+  .issue-body { padding: 14px 18px; display: grid; gap: 10px; font-size: 14px; }
+  .issue-body .row { display: grid; grid-template-columns: 74px 1fr; gap: 10px; }
+  .issue-body .row b { color: var(--ink-faint); font-weight: 600; font-family:'IBM Plex Sans',sans-serif; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+  .issue-body .row span { color: var(--ink-dim); }
+
+  /* ── changelog ────────────────────────────────────────────── */
+  .changelog { display: flex; flex-direction: column; }
+  .change-entry {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 18px;
+    padding-block: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .change-entry:first-child { border-top: none; padding-top: 4px; }
+  .change-meta { display: flex; flex-direction: column; gap: 6px; }
+  .change-ver {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+  }
+  .change-date { font-size: 11.5px; color: var(--ink-faint); }
+  .change-body h4 { margin: 0 0 6px; font-size: 14.5px; font-weight: 600; }
+  .change-body ul { margin: 0; padding-left: 20px; max-width: 62ch; }
+  .change-body li { font-size: 14px; color: var(--ink-dim); }
+  .change-body li + li { margin-top: 4px; }
+  @media (max-width: 560px) {
+    .change-entry { grid-template-columns: 1fr; gap: 4px; }
+  }
+
+  /* ── device picker mockup ─────────────────────────────────── */
+  .picker {
+    border: 1px solid var(--code-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--code-bg);
+    box-shadow: var(--shadow);
+    max-width: 420px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .picker-hd {
+    padding: 11px 14px;
+    font-size: 13px;
+    color: var(--code-ink);
+    border-bottom: 1px solid var(--code-border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .picker-hd .origin { color: var(--code-dim); }
+  .picker-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--code-dim);
+    border-bottom: 1px solid var(--code-border);
+  }
+  .picker-row:last-child { border-bottom: none; }
+  .picker-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--code-dim); flex-shrink: 0; opacity: .5; }
+  .picker-row.match { color: var(--code-ink); background: rgba(233,69,96,.10); }
+  .picker-row.match .dot { background: var(--code-accent); opacity: 1; box-shadow: 0 0 5px var(--code-accent); }
+  .picker-row.match .name { font-weight: 600; }
+  .picker-row .paired { margin-left: auto; font-size: 10.5px; color: var(--code-cyan); border: 1px solid var(--code-cyan); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+  .picker-row .unknown { font-size: 11px; color: var(--code-dim); }
+  .picker-ft {
+    padding: 9px 14px;
+    display: flex; justify-content: flex-end; gap: 8px;
+    font-size: 12.5px;
+  }
+  .picker-ft .pbtn { padding: 4px 12px; border-radius: 5px; border: 1px solid var(--code-border); color: var(--code-dim); }
+  .picker-ft .pbtn.primary { color: var(--code-ink); border-color: var(--code-dim); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding-block: 22px 40px;
+    color: var(--ink-faint);
+    font-size: 13px;
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 20px; }
+    nav.toc.desktop { display: none; }
+    details.toc-mobile {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      padding: 4px 16px;
+    }
+    details.toc-mobile summary { cursor: pointer; padding: 10px 0; font-weight: 600; font-family:'IBM Plex Sans',sans-serif; font-size: 14px; }
+    details.toc-mobile nav.toc { position: static; padding-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <div class="masthead-top">
+      <span class="status-led" aria-hidden="true"></span>
+      <span class="eyebrow">操作手冊 · Web Bluetooth CAN 診斷工具</span>
+    </div>
+    <h1 class="title">Endex eBike Monitor 操作手冊</h1>
+    <p class="subtitle">透過 BLE↔CAN 橋接連線電動輔助自行車控制器，即時監控 Driver / Motor / Battery
+      狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
+    <div class="meta-row">
+      <span class="pill accent">程式版本 v1.3.0</span>
+      <span class="pill cyan">手冊版本 v1.5（見第 13 節）</span>
+      <span class="pill">單頁 Vanilla JS，無需建置</span>
+      <span class="pill">需 HTTPS 或 localhost</span>
+      <span class="pill">Chrome / Edge</span>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <nav class="toc desktop" id="tocDesktop">
+      <div class="toc-hd">目錄</div>
+      <a href="#sec-01"><span class="num">01</span>總覽</a>
+      <a href="#sec-02"><span class="num">02</span>啟動環境</a>
+      <a href="#sec-03"><span class="num">03</span>連線 BLE</a>
+      <a href="#sec-04"><span class="num">04</span>功能鍵面板</a>
+      <a href="#sec-05"><span class="num">05</span>StartCmd 參數</a>
+      <a href="#sec-06"><span class="num">06</span>監控頻道與計數器</a>
+      <a href="#sec-07"><span class="num">07</span>即時資料卡片</a>
+      <a href="#sec-08"><span class="num">08</span>暫存器位元檢視</a>
+      <a href="#sec-09"><span class="num">09</span>電池資訊</a>
+      <a href="#sec-10"><span class="num">10</span>記錄模式</a>
+      <a href="#sec-11"><span class="num">11</span>疑難排解</a>
+      <a href="#sec-12"><span class="num">12</span>協定參考附錄</a>
+      <a href="#sec-13"><span class="num">13</span>版本紀錄</a>
+    </nav>
+
+    <main>
+
+      <details class="toc-mobile">
+        <summary>目錄</summary>
+        <nav class="toc" id="tocMobile">
+          <a href="#sec-01"><span class="num">01</span>總覽</a>
+          <a href="#sec-02"><span class="num">02</span>啟動環境</a>
+          <a href="#sec-03"><span class="num">03</span>連線 BLE</a>
+          <a href="#sec-04"><span class="num">04</span>功能鍵面板</a>
+          <a href="#sec-05"><span class="num">05</span>StartCmd 參數</a>
+          <a href="#sec-06"><span class="num">06</span>監控頻道與計數器</a>
+          <a href="#sec-07"><span class="num">07</span>即時資料卡片</a>
+          <a href="#sec-08"><span class="num">08</span>暫存器位元檢視</a>
+          <a href="#sec-09"><span class="num">09</span>電池資訊</a>
+          <a href="#sec-10"><span class="num">10</span>記錄模式</a>
+          <a href="#sec-11"><span class="num">11</span>疑難排解</a>
+          <a href="#sec-12"><span class="num">12</span>協定參考附錄</a>
+      <a href="#sec-13"><span class="num">13</span>版本紀錄</a>
+        </nav>
+      </details>
+
+      <!-- 01 ─────────────────────────────────────────────── -->
+      <section id="sec-01">
+        <div class="sec-hd"><span class="sec-num">01</span><h2>總覽</h2></div>
+        <p class="sec-desc">Endex eBike Monitor 是一支給研發／產線工程師使用的診斷工具：瀏覽器透過 Web
+          Bluetooth 連上車輛的 BLE↔CAN 橋接模組，用來排查故障、驗證韌體行為、採集騎乘資料。</p>
+        <div class="grid3">
+          <div class="feat">
+            <h4><span class="led"></span>即時 CAN 輪詢</h4>
+            <p>以 Tool_R 封包逐筆送出請求，控制器非同步回覆，介面即時更新速度、電流、電壓、暫存器等數值。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="led ok"></span>高頻批次記錄</h4>
+            <p>切換至記錄模式後，控制器改送固定週期的批次封包，適合採集高取樣率資料供事後分析。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="led fault"></span>暫存器位元檢視</h4>
+            <p>Fault／Status／Peripheral／電池暫存器逐 bit 拆解，紅燈代表異常、綠燈代表正常運作中。</p>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:16px">
+          本專案沒有建置流程、套件管理或自動測試——沒有模擬裝置，驗證方式就是連上真實硬體實際操作。
+        </div>
+      </section>
+
+      <!-- 02 ─────────────────────────────────────────────── -->
+      <section id="sec-02">
+        <div class="sec-hd"><span class="sec-num">02</span><h2>啟動環境</h2></div>
+        <p class="sec-desc">Web Bluetooth 只在「安全情境」下可用：<code>localhost</code> 或 HTTPS。直接用
+          <code>file://</code> 開啟 <code>index.html</code> 無法呼叫藍牙 API。</p>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>方式</th><th>指令</th><th>備註</th></tr></thead>
+            <tbody>
+              <tr><td class="key">npx serve</td><td class="val">npx serve .</td><td>任意 Node 環境皆可，免安裝</td></tr>
+              <tr><td class="key">Python</td><td class="val">python -m http.server 8080</td><td>需系統已裝 Python</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>啟動後以瀏覽器開啟 <code>http://localhost:8080</code>。瀏覽器需為 Chrome 或 Edge（支援 Web
+          Bluetooth API），且電腦藍牙需已開啟並在裝置有效範圍內。</p>
+      </section>
+
+      <!-- 03 ─────────────────────────────────────────────── -->
+      <section id="sec-03">
+        <div class="sec-hd"><span class="sec-num">03</span><h2>連線 BLE</h2></div>
+        <p class="sec-desc">頁面左上角是唯一的連線入口，連線／中斷共用同一顆按鈕。</p>
+        <div class="card">
+          <h3 style="margin-top:0">操作步驟</h3>
+          <ol>
+            <li>按下 <span class="btn-preview blue">BLE 連線</span>，系統彈出裝置選單，選擇目標車輛。</li>
+            <li>連線成功後按鈕變為 <span class="btn-preview off">關閉連線</span>，狀態燈由灰轉綠，
+              旁邊顯示裝置名稱與偵測到的 UART Profile（如 <code>NUS</code>）。</li>
+            <li>應用程式會依序嘗試 <code>ESP_GATTS → NUS → HM10 → SPP</code>，取第一組同時具備
+              Write／Notify 特徵值的 Service，不需手動選擇 Profile。</li>
+            <li>NUS Profile 若帶有 Config 特徵值，連線時會自動送出 5-byte 封包設定鮑率（預設 460800）。</li>
+            <li>需要中斷時再按一次同一顆按鈕，或直接關閉裝置電源／拉開距離觸發斷線。</li>
+          </ol>
+        </div>
+
+        <h3>裝置選單：如何挑對裝置</h3>
+        <p>程式以 <code>acceptAllDevices: true</code> 呼叫 <code>requestDevice()</code>，不會用 Service UUID
+          預先過濾，所以選單會列出當下所有掃描到（含系統已配對）的藍牙裝置，不只是車輛本身。在 Windows 上這會是系統層級的
+          藍牙配對視窗（標題列顯示發出請求的來源，例如 <code>localhost:8080 想要配對</code>），而不是 Chrome
+          分頁內的清單；macOS／Linux 則會看到 Chrome 自帶的分頁內選單，行為一致，外觀不同。</p>
+        <div class="picker">
+          <div class="picker-hd"><span>選擇要配對的裝置</span><span class="origin">localhost:8080</span></div>
+          <div class="picker-row"><span class="dot"></span><span class="name">未知或不支援的裝置</span><span class="unknown">(0E:F0:08:7E:DD:A7)</span></div>
+          <div class="picker-row"><span class="dot"></span><span class="name">TY</span></div>
+          <div class="picker-row match"><span class="dot"></span><span class="name">ENDEX_CAN_1F02</span><span class="paired">已配對</span></div>
+        </div>
+        <ul style="margin-top:12px">
+          <li><strong>認裝置名稱，不要認順序</strong>——控制器的 BLE 廣播名稱固定為
+            <code>ENDEX_CAN_XXXX</code> 格式（<code>XXXX</code> 為該顆控制器的識別碼），附近若有其他藍牙裝置同時在列，順序不保證固定。</li>
+          <li><strong>「已配對」不代表選錯</strong>——標示已配對的裝置是系統先前握手過的紀錄，一樣可以直接點選繼續連線，不需要先取消配對。</li>
+          <li><strong>灰底「未知或不支援的裝置」多半可以忽略</strong>——這類項目通常是系統偵測到訊號但拿不到裝置名稱的周邊（滑鼠、耳機等），除非確定車輛控制器沒有廣播名稱，否則不會是要選的項目。</li>
+        </ul>
+
+        <div class="callout warn" style="margin-top:14px">
+          <strong>斷線會自動停止</strong>：強制啟動監控、向量監控、記錄模式在偵測到 <code>gattserverdisconnected</code>
+          時都會自動停止並重置按鈕狀態，不需要手動清理。
+        </div>
+      </section>
+
+      <!-- 04 ─────────────────────────────────────────────── -->
+      <section id="sec-04">
+        <div class="sec-hd"><span class="sec-num">04</span><h2>功能鍵面板</h2></div>
+        <p class="sec-desc">連線列下方是可折疊的功能鍵面板，收合後畫面更精簡，展開後可調整 StartCmd 全參數與各項監控開關。</p>
+
+        <div class="callout warn">
+          <strong>▶ 強制啟動 與 ▶ 向量監控 是「模擬上表」的功能：</strong> 正常情況下 StartCmd
+          （餵狗＋助力／燈光／模式等控制指令，見第 05 節）是由車輛的上表（把手顯示器／儀表）持續送給馬達控制器的。
+          這兩顆按鈕讓這支工具直接從電腦代送同一份 StartCmd，等於軟體模擬了一顆上表——<strong>即使控制器沒有接上實體上表，
+          也能單獨用這支工具啟動並監控控制器</strong>，不必為了讀資料另外接一顆上表當「開機鑰匙」。
+        </div>
+
+        <div class="table-wrap" style="margin-top:14px">
+          <table class="spec-table">
+            <thead><tr><th>控制項</th><th>行為</th></tr></thead>
+            <tbody>
+              <tr><td class="key">▾ / ▸ 功能鍵</td><td class="val" style="white-space:normal">收合／展開下方 StartCmd 參數列與 Tick 項目列，畫面空間有限時可先收起</td></tr>
+              <tr><td class="key">助行</td><td class="val" style="white-space:normal">勾選即在 StartCmd 的 D1 送出 <code>0xA5</code>（Push Assist 開），取消則送 <code>0x00</code></td></tr>
+              <tr><td class="key">▶ 強制啟動</td><td class="val" style="white-space:normal">模擬上表持續送出 StartCmd，開啟／停止 Driver Status 監控迴圈（1000ms 週期，依 Tick 項目勾選送出對應請求），不需接上表即可讓控制器開機運轉</td></tr>
+              <tr><td class="key">⏺ 開始記錄</td><td class="val" style="white-space:normal">切換韌體進入／退出記錄模式（詳見第 10 節），與 CAN 輪詢互斥</td></tr>
+              <tr><td class="key">📖 操作說明書</td><td class="val" style="white-space:normal">開啟隨專案附帶的 <code>manual.html</code>（新分頁），不需連線、不需帳號即可使用</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">「強制啟動」與「向量監控」按鈕在未連線時點擊會跳出提示要求先連線；記錄模式開啟期間，
+          兩者會被停用（灰階、無法點擊），因為控制器此時已停止回覆 Tool_R 封包。</p>
+      </section>
+
+      <!-- 05 ─────────────────────────────────────────────── -->
+      <section id="sec-05">
+        <div class="sec-hd"><span class="sec-num">05</span><h2>StartCmd 參數</h2></div>
+        <p class="sec-desc">StartCmd 是唯一同時「餵狗」（維持控制器 watchdog）又「下指令」（燈光、模式、排檔…）的封包，
+          只要監控迴圈在跑就必須每輪送出，否則控制器可能判定連線逾時。8 個資料位元組（D0–D7）對應下列參數列：</p>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>位元組</th><th>名稱</th><th>數值 / 位元定義</th></tr></thead>
+            <tbody>
+              <tr><td class="key">D0</td><td>助力等級 Assist Level</td><td class="val" style="white-space:normal">0 ~ 5（bits 2:0）</td></tr>
+              <tr><td class="key">D1</td><td>助行 Push Assist</td><td class="val" style="white-space:normal">0x00 關 / 0xA5 開（沿用頂列「助行」勾選框）</td></tr>
+              <tr><td class="key">D2</td><td>燈光 Light</td><td class="val" style="white-space:normal">bit0 前燈・bit1 後燈・bit2 左燈・bit3 右燈</td></tr>
+              <tr><td class="key">D3</td><td>開關 Switch</td><td class="val" style="white-space:normal">0x00 Idle / 0x5A Power On / 0xA5 Power Off</td></tr>
+              <tr><td class="key">D4</td><td>操作模式 Operation</td><td class="val" style="white-space:normal">0x00 Normal / 0x5A Boost / 0xEC Eco / 0xEA Easy / 0xAE Navi / 0xA5 Locked</td></tr>
+              <tr><td class="key">D5</td><td>Driver 廣播 Broadcast</td><td class="val" style="white-space:normal">0 Disable / 1 Enable / 2 Mute</td></tr>
+              <tr><td class="key">D6</td><td>電池鎖 Battery Lock</td><td class="val" style="white-space:normal">0x5A Unlocked / 0x00 Locked</td></tr>
+              <tr><td class="key">D7</td><td>排檔 Gear</td><td class="val" style="white-space:normal">bits 3:0 檔位 0~15・bit5(0x20) 升檔・bit6(0x40) 降檔</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">修改任一控制項，列尾的 <code>D0:xx D1:xx …</code> 預覽會即時更新，方便下手前先確認實際送出的 hex 值。</p>
+      </section>
+
+      <!-- 06 ─────────────────────────────────────────────── -->
+      <section id="sec-06">
+        <div class="sec-hd"><span class="sec-num">06</span><h2>監控頻道與計數器</h2></div>
+        <p class="sec-desc">Tick 項目列控制「強制啟動」迴圈實際會送哪些請求；Motor Vector 走獨立的第二條迴圈，
+          兩者互不干擾，各自有自己的計數器。</p>
+
+        <h3>Tick 項目（強制啟動迴圈，1000ms／輪）</h3>
+        <div class="grid3">
+          <div class="feat"><h4><span class="tag">Start</span></h4><p>StartCmd — 建議常駐勾選，取消後控制器可能因收不到餵狗封包而逾時</p></div>
+          <div class="feat"><h4><span class="tag">Fault</span></h4><p>Fault Register 請求</p></div>
+          <div class="feat"><h4><span class="tag">Status</span></h4><p>Status + 速度／電流／電壓請求</p></div>
+          <div class="feat"><h4><span class="tag">Assist</span></h4><p>助力／踏頻資料請求</p></div>
+          <div class="feat"><h4><span class="tag">Distance</span></h4><p>單趟／剩餘里程請求</p></div>
+          <div class="feat"><h4><span class="tag">Motor Vec</span></h4><p>馬達向量請求（也可改用下方獨立迴圈以更高頻率取樣）</p></div>
+        </div>
+
+        <h3>向量監控（獨立迴圈）</h3>
+        <p>跟「強制啟動」一樣是模擬上表送出 StartCmd 餵狗，差別在於每輪只加送 Motor Vector 請求、不夾帶
+          Fault/Status/Assist/Distance，避免與其他查詢搶頻寬，適合只要看馬達向量但要更高取樣率的情境。
+          拖曳「向量間隔」滑桿設定週期（10–100ms，預設 50ms），按下 <span class="btn-preview">▶ 向量監控</span>
+          即可獨立於強制啟動迴圈運作（兩者可同時開啟）。TX / RX 計數器即時顯示送出與收到的筆數，
+          <span class="btn-preview">↺</span> 可歸零重算。</p>
+
+        <h3>全域接收統計</h3>
+        <p><strong>All RX</strong> 累計自連線以來收到的全部 Tool_R 封包數，並即時估算平均與最短間隔（取樣最近
+          10 筆），可用來粗估控制器實際回覆頻率或發現丟包。</p>
+
+        <h3>記錄批次計數</h3>
+        <p>記錄模式開啟後，「車輛」「馬達」兩顆計數器分別累加已收到的批次數；旁邊的
+          <span class="btn-preview">匯出車輛 CSV</span> / <span class="btn-preview">匯出馬達 CSV</span>
+          可隨時手動匯出目前緩衝，「自動儲存」勾選框與間隔設定見第 10 節。</p>
+      </section>
+
+      <!-- 07 ─────────────────────────────────────────────── -->
+      <section id="sec-07">
+        <div class="sec-hd"><span class="sec-num">07</span><h2>即時資料卡片</h2></div>
+        <p class="sec-desc">主畫面的卡片列即時顯示解析後的數值，資料來源依卡片而異——連線後只要對應的
+          Tick 項目有勾選，或記錄模式已在跑，數值就會持續更新。</p>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>卡片</th><th>單位</th><th>資料來源</th></tr></thead>
+            <tbody>
+              <tr><td class="key">Bike Speed</td><td class="val">km/h</td><td class="val" style="white-space:normal">Status 回覆</td></tr>
+              <tr><td class="key">Drive Current</td><td class="val">A</td><td class="val" style="white-space:normal">Status 回覆</td></tr>
+              <tr><td class="key">Drive Voltage</td><td class="val">V</td><td class="val" style="white-space:normal">Status 回覆</td></tr>
+              <tr><td class="key">Driver Temp</td><td class="val">°C</td><td class="val" style="white-space:normal">Fault 回覆</td></tr>
+              <tr><td class="key">Motor Temp</td><td class="val">°C</td><td class="val" style="white-space:normal">Fault 回覆</td></tr>
+              <tr><td class="key">Total Assist</td><td class="val">digit</td><td class="val" style="white-space:normal">Assist 回覆（僅 CAN 輪詢，記錄模式無此欄位）</td></tr>
+              <tr><td class="key">Assist Level</td><td class="val">digit</td><td class="val" style="white-space:normal">Assist 回覆</td></tr>
+              <tr><td class="key">Pedal Torque</td><td class="val">Nm</td><td class="val" style="white-space:normal">Assist 回覆</td></tr>
+              <tr><td class="key">Pedal Cadence</td><td class="val">rpm</td><td class="val" style="white-space:normal">Assist 回覆</td></tr>
+              <tr><td class="key">Pedal Power</td><td class="val">W</td><td class="val" style="white-space:normal">Assist 回覆</td></tr>
+              <tr><td class="key">Motor Ph.Curr</td><td class="val">A</td><td class="val" style="white-space:normal">Assist 回覆</td></tr>
+              <tr><td class="key">Single Trip</td><td class="val">km</td><td class="val" style="white-space:normal">Distance 回覆（僅 CAN 輪詢，記錄模式無此欄位）</td></tr>
+              <tr><td class="key">Remain Dist</td><td class="val">km</td><td class="val" style="white-space:normal">Distance 回覆（僅 CAN 輪詢，記錄模式無此欄位）</td></tr>
+              <tr><td class="key">Rotor Angle</td><td class="val">°</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
+              <tr><td class="key">Id</td><td class="val">A</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
+              <tr><td class="key">Iq</td><td class="val">A</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
+              <tr><td class="key">Vd Cmd</td><td class="val">digit</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
+              <tr><td class="key">Vq Cmd</td><td class="val">digit</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout" style="margin-top:14px">
+          <strong>記錄模式期間的例外：</strong> Total Assist／Single Trip／Remain Dist 三張卡片、以及 Peripheral
+          暫存器，韌體的批次協定本身就沒有回傳這些欄位，記錄期間會停在「記錄前最後一次 CAN 值」不再變動——這是協定的結構性缺口，不是程式漏接，比對表（第 10 節）也刻意不列這幾項。
+        </div>
+      </section>
+
+      <!-- 08 ─────────────────────────────────────────────── -->
+      <section id="sec-08">
+        <div class="sec-hd"><span class="sec-num">08</span><h2>暫存器位元檢視</h2></div>
+        <p class="sec-desc">四組暫存器方塊以逐 bit 的圓點顯示狀態：預設「亮紅燈」代表異常，少數 bit
+          用綠燈代表「正常運作中」（例如 Motor Running、Push Assist On）。點擊任一暫存器標題可開啟放大檢視彈窗，
+          同時顯示目前的 HEX／DEC 數值。</p>
+
+        <div class="reg-grid">
+          <div class="reg-box">
+            <h4>Fault Register <span class="legend">12-bit</span></h4>
+            <div class="bitgrid">
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit0</span><span class="bitname">Over Current Protection</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit1</span><span class="bitname">Over Voltage Protection</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit2</span><span class="bitname">Under Voltage Protection</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit3</span><span class="bitname">Opamp Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit4</span><span class="bitname">Hall Connection Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit5</span><span class="bitname">Phase Line Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit6</span><span class="bitname">E-Lock Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit7</span><span class="bitname">Cadence Sensor Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit8</span><span class="bitname">Torque Sensor Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit9</span><span class="bitname">Throttle Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit10</span><span class="bitname">Hall Transition Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit11</span><span class="bitname">Communication Error</span></div>
+            </div>
+          </div>
+          <div class="reg-box">
+            <h4>DRV Register <span class="legend">5-bit・共用 Fault 回覆的低位元組</span></h4>
+            <div class="bitgrid">
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit0</span><span class="bitname">Drive Over Temperature</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit1</span><span class="bitname">Motor Over Temperature</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit2</span><span class="bitname">Motor Stuck Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit3</span><span class="bitname">Hub Lock Error</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit4</span><span class="bitname">Wheel Sensor Error</span></div>
+            </div>
+          </div>
+          <div class="reg-box">
+            <h4>Drv Status Register <span class="legend">8-bit・部分 bit 為綠燈語意</span></h4>
+            <div class="bitgrid">
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit0</span><span class="bitname">Drive Initial（0=init 1=Ready）</span></div>
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit1</span><span class="bitname">Motor（0=Stop 1=Running）</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit2</span><span class="bitname">E-Lock（0=Unlock 1=Lock）</span></div>
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit3</span><span class="bitname">Push Assist（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit4</span><span class="bitname">Lock（0=Unlock 1=Lock）</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit5</span><span class="bitname">Battery Lock（0=Unlock 1=Lock）</span></div>
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit6</span><span class="bitname">Boost（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit7</span><span class="bitname">Driver Reduction（0=Normal 1=Reduction）</span></div>
+            </div>
+          </div>
+          <div class="reg-box">
+            <h4>Drv Peripheral Register <span class="legend">8-bit・部分 bit 為綠燈語意</span></h4>
+            <div class="bitgrid">
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit0</span><span class="bitname">Head Light（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit1</span><span class="bitname">Rear Light（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit2</span><span class="bitname">DR Light（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led ok"></span><span class="bitnum">bit3</span><span class="bitname">Break Light（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit5</span><span class="bitname">Brake（0=Off 1=On）</span></div>
+              <div class="bitrow"><span class="led"></span><span class="bitnum">bit7</span><span class="bitname">Kick Stand（0=Up 1=Down）</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout warn" style="margin-top:14px">
+          <strong>Fault 與 DRV 共用同一筆回覆：</strong> Fault Register 是 12-bit，DRV Register 是它的低位元組再拆出 5 個 bit
+          （兩者數值相同、標籤不同），更新其中一個時另一個也會同步刷新。
+        </div>
+      </section>
+
+      <!-- 09 ─────────────────────────────────────────────── -->
+      <section id="sec-09">
+        <div class="sec-hd"><span class="sec-num">09</span><h2>電池資訊</h2></div>
+        <p class="sec-desc">按 <span class="btn-preview">🔋 電池資訊</span> 開啟彈窗，內容分成兩欄（電池1／電池2），
+          每欄再各自區分兩種資料來源：</p>
+        <div class="grid2">
+          <div class="feat">
+            <h4><span class="led ok"></span>CAN 輪詢（即時）</h4>
+            <p>Voltage／Current／Temp／RSOC／ASOC／SOH／Full Charge／Remain Cap，以及 13-bit Fault
+              Register 與 8-bit Status Register——控制器週期性主動廣播，不需要送請求，單電池車型會改用
+              Single Battery 專用 CAN ID 廣播同一組欄位。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="led"></span>記錄模式（批次）</h4>
+            <p>RSOC／Temp／Status／16-bit Fault（bit0~12 定義與 CAN 版相同，bit13~15 保留），
+              取自記錄批次的對應欄位；頂部另有「模擬 SOC」（SimualRSOC）只在記錄模式下有值。</p>
+          </div>
+        </div>
+        <p style="margin-top:14px">兩種來源指向同一顆實體電池、同一個暫存器定義，只是走不同傳輸路徑——在記錄模式尚未收到任何批次前，
+          「記錄模式」欄位會顯示 <code>—</code>。</p>
+      </section>
+
+      <!-- 10 ─────────────────────────────────────────────── -->
+      <section id="sec-10">
+        <div class="sec-hd"><span class="sec-num">10</span><h2>記錄模式</h2></div>
+        <p class="sec-desc">記錄模式讓控制器切換成高頻批次輸出，取樣密度遠高於逐筆 CAN 輪詢，適合做波形分析、
+          事件重現。開啟時會自動停止 CAN 輪詢與向量監控，因為兩種格式互斥、無法同時解析。</p>
+
+        <h3>開始 / 停止</h3>
+        <ol>
+          <li>按 <span class="btn-preview">⏺ 開始記錄</span>：立即凍結目前卡片數值作為「記錄前基準」，
+            送出開啟指令後切換解析格式，按鈕變為 <span class="btn-preview off">⏹ 停止記錄</span>。</li>
+          <li>「強制啟動」「向量監控」按鈕在記錄期間停用；記錄批次計數器（第 06 節）開始累加。</li>
+          <li>再按一次按鈕即送出關閉指令、切回 CAN 輪詢解析格式，按鈕與其餘功能鍵恢復可用。</li>
+        </ol>
+
+        <h3>Debug 面板</h3>
+        <p>主畫面下方兩個 Debug 方塊分別顯示「車輛狀態批次」與「馬達 Id/Iq 批次」最新收到的一筆原始
+          bytes（HEX）與解析後欄位，用來直接核對協定是否解析正確，不需要另外接封包擷取工具。</p>
+
+        <h3>記錄前 CAN 基準 vs 記錄中最新值</h3>
+        <p>比對表把「進入記錄模式那一刻」凍結的 CAN 數值，跟記錄批次持續更新的最新值並排顯示，數值不同的列會標色，
+          方便肉眼確認兩種資料來源是否一致。前述 Total Assist／Single Trip／Remain Dist
+          三個欄位協定裡沒有對應資料，因此刻意不列入比對表。</p>
+
+        <h3>CSV 匯出與自動儲存</h3>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>控制項</th><th>行為</th></tr></thead>
+            <tbody>
+              <tr><td class="key">匯出車輛/馬達 CSV</td><td class="val" style="white-space:normal">手動將目前緩衝的記錄下載為 CSV，緩衝不會因此清空</td></tr>
+              <tr><td class="key">自動儲存</td><td class="val" style="white-space:normal">勾選後每 30 秒檢查一次，達到設定間隔（預設 15 分）就自動匯出並清空緩衝、段號遞增，避免長時間錄製時記憶體無限增長</td></tr>
+              <tr><td class="key">間隔（分）</td><td class="val" style="white-space:normal">自動儲存的輪替週期，1~120 分鐘</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout" style="margin-top:14px">
+          匯出走瀏覽器原生下載（<code>&lt;a download&gt;</code>），實際存放路徑由瀏覽器「下載內容」設定決定
+          ——多數情況會落在系統下載資料夾，若瀏覽器設定「每次下載詢問位置」則每次都會跳出存檔對話框。
+          檔名格式為 <code>vehicle_status_seg{段號}_{時間戳}.csv</code> / <code>motor_idiq_seg{段號}_{時間戳}.csv</code>。
+        </div>
+      </section>
+
+      <!-- 11 ─────────────────────────────────────────────── -->
+      <section id="sec-11">
+        <div class="sec-hd"><span class="sec-num">11</span><h2>疑難排解</h2></div>
+        <p class="sec-desc">依嚴重度排序，先處理連不上線的問題，再處理資料解析異常。</p>
+
+        <div class="issue">
+          <div class="issue-hd"><span class="sev high"></span>按下「BLE 連線」沒有反應，或跳出安全情境錯誤</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>Web Bluetooth 需要安全情境，用 <code>file://</code> 直接開啟 <code>index.html</code> 不符合條件。</span></div>
+            <div class="row"><b>處理</b><span>改用 <code>npx serve .</code> 或 <code>python -m http.server</code> 起本機伺服器，改用 <code>http://localhost:port</code> 開啟，並確認瀏覽器是 Chrome 或 Edge。</span></div>
+          </div>
+        </div>
+
+        <div class="issue">
+          <div class="issue-hd"><span class="sev high"></span>選到裝置後跳出「無法自動偵測 BLE UART Characteristics」</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>依序嘗試 ESP_GATTS／NUS／HM10／SPP 四組 Profile 都找不到同時具備 Write + Notify 的 Service。</span></div>
+            <div class="row"><b>處理</b><span>確認選到的是正確裝置（非附近其他藍牙裝置）、韌體有正確廣播對應 Service UUID；錯誤訊息裡會列出每個 Profile 各自失敗的原因，可據此比對第 12 節的 UART Profile 對照表。</span></div>
+          </div>
+        </div>
+
+        <div class="issue">
+          <div class="issue-hd"><span class="sev mid"></span>強制啟動已開啟，但卡片數值一直不動</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>對應的 Tick 項目（Fault／Status／Assist／Distance／Motor Vec）沒有勾選，該類請求就不會送出。</span></div>
+            <div class="row"><b>處理</b><span>回到第 06 節勾選需要的項目；若 Start 也被取消勾選，控制器可能因收不到餵狗封包而斷開，建議 Start 保持常駐勾選。</span></div>
+          </div>
+        </div>
+
+        <div class="issue">
+          <div class="issue-hd"><span class="sev mid"></span>記錄模式 Debug 面板一直顯示「尚未收到資料」，或解析數值明顯異常</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>記錄批次沒有 magic byte 可以重新對齊，一旦切幀長度判斷錯誤，緩衝區就會永久錯位，後續所有批次都讀到偏移過的資料。</span></div>
+            <div class="row"><b>處理</b><span>先確認是否為已知修正過的切幀問題（車輛與馬達批次總長度不同，需依各自的 length byte 動態切幀，不可假設固定長度）；若持續發生，重新開關一次記錄模式讓緩衝重置，或中斷 BLE 連線重連。</span></div>
+          </div>
+        </div>
+
+        <div class="issue">
+          <div class="issue-hd"><span class="sev mid"></span>找不到自動儲存匯出的 CSV 檔案</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>匯出使用瀏覽器原生下載，不是寫入專案資料夾。</span></div>
+            <div class="row"><b>處理</b><span>檢查瀏覽器的下載設定（Chrome：<code>chrome://settings/downloads</code>）確認預設下載資料夾，或是否設成每次下載詢問位置。</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12 ─────────────────────────────────────────────── -->
+      <section id="sec-12">
+        <div class="sec-hd"><span class="sec-num">12</span><h2>協定參考附錄</h2></div>
+        <p class="sec-desc">兩種各自獨立的封包格式，切換時應用程式會清空接收緩衝，避免新舊格式殘留的
+          bytes 被誤判。</p>
+
+        <h3>Tool_R CAN 封包（預設模式）</h3>
+        <p>15 bytes 定長，逐筆請求／非同步回覆：</p>
+        <div class="frame-diagram">
+          <div class="byte hdr"><span class="b">0xFA</span><span class="l">sync</span></div>
+          <div class="byte hdr"><span class="b">0x0D</span><span class="l">sync</span></div>
+          <div class="byte id"><span class="b">ID₀</span><span class="l">CAN ID LE</span></div>
+          <div class="byte id"><span class="b">ID₁</span><span class="l">CAN ID LE</span></div>
+          <div class="byte id"><span class="b">ID₂</span><span class="l">CAN ID LE</span></div>
+          <div class="byte id"><span class="b">ID₃</span><span class="l">CAN ID LE</span></div>
+          <div class="byte"><span class="b">Len</span><span class="l">1 byte</span></div>
+          <div class="byte payload"><span class="b">D0…D7</span><span class="l">data 8B</span></div>
+        </div>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>用途</th><th>RX CAN ID</th><th>ALT 備援 ID</th></tr></thead>
+            <tbody>
+              <tr><td class="key">Fault</td><td class="val">0x10235030</td><td class="val">0x142350FF</td></tr>
+              <tr><td class="key">Status</td><td class="val">0x10205030</td><td class="val">0x142050FF</td></tr>
+              <tr><td class="key">Assist</td><td class="val">0x10215030</td><td class="val">0x142150FF</td></tr>
+              <tr><td class="key">Distance</td><td class="val">0x10225030</td><td class="val">0x142250FF</td></tr>
+              <tr><td class="key">Motor Vector</td><td class="val">0x10255030</td><td class="val">—</td></tr>
+              <tr><td class="key">Battery1 Cap/Status</td><td class="val">0x146011FF / 0x146111FF</td><td class="val" style="white-space:normal">週期廣播，不需請求</td></tr>
+              <tr><td class="key">Battery2 Cap/Status</td><td class="val">0x146012FF / 0x146112FF</td><td class="val" style="white-space:normal">週期廣播，不需請求</td></tr>
+              <tr><td class="key">Single Battery</td><td class="val">0x146010FF / 0x146110FF</td><td class="val" style="white-space:normal">單電池車型取代電池1 ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Recording Mode 批次封包</h3>
+        <p>以 <code>0xFD</code> 開關（手機 → 裝置），開啟後裝置改送 <code>command(1) + length(1) +
+          payload(length)</code> 的批次，兩種批次型別總長度並不相同：</p>
+        <div class="grid2">
+          <div class="feat">
+            <h4><span class="tag">0xFD</span> 車輛狀態批次</h4>
+            <p>總長 212 bytes（payload 210 bytes）= 6 筆 × 35 bytes：速度、電流、電壓、Fault/Status/Peripheral
+              暫存器、踏頻、電池 RSOC/Status/Temp 等。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="tag">0xFE</span> 馬達 Id/Iq 批次</h4>
+            <p>總長 242 bytes（payload 240 bytes）= 24 筆 × 10 bytes：計數、轉子角度、Id、Iq、Vd_cmd、Vq_cmd。</p>
+          </div>
+        </div>
+        <div class="callout warn" style="margin-top:14px">
+          <strong>切幀依 length byte 動態決定，不可假設固定長度：</strong> <code>REC_CMD_BYTE</code>（手機→裝置的開關指令）
+          與 <code>REC_BATCH_VEHICLE</code>（裝置→手機的車輛批次標籤）數值同為 <code>0xFD</code>，方向相反、意義不同，
+          追封包時務必留意。此格式沒有 magic byte 可重新對齊，一旦誤判某筆長度，後續所有批次會永久錯位。
+        </div>
+
+        <h3>BLE UART Profile 對照表</h3>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>Profile</th><th>Service UUID</th><th>Write</th><th>Notify</th><th>Config</th></tr></thead>
+            <tbody>
+              <tr><td class="key">ESP_GATTS</td><td class="val">0x00ff</td><td class="val">0xff01</td><td class="val">0xff01</td><td class="val">—</td></tr>
+              <tr><td class="key">NUS</td><td class="val">6e400001-…</td><td class="val">6e400002-…</td><td class="val">6e400003-…</td><td class="val">6e400004-…</td></tr>
+              <tr><td class="key">HM10</td><td class="val">0xffe0</td><td class="val">0xffe1</td><td class="val">0xffe1</td><td class="val">—</td></tr>
+              <tr><td class="key">SPP</td><td class="val">0xabf0</td><td class="val">0xabf1</td><td class="val">0xabf2</td><td class="val">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">連線流程固定依序嘗試以上四組，取第一組同時偵測到 Write + Notify 特徵值的 Service；
+          NUS 的 Config 特徵值用來設定鮑率，預設 460800。</p>
+      </section>
+
+      <!-- 13 ─────────────────────────────────────────────── -->
+      <section id="sec-13">
+        <div class="sec-hd"><span class="sec-num">13</span><h2>版本紀錄</h2></div>
+        <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
+        <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.5</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>改以 manual.html 隨專案發布，不再依賴私人連結</h4>
+              <ul>
+                <li>本手冊改為專案內的靜態頁面 <code>manual.html</code>，跟 <code>index.html</code> 放在同一層，一般使用者不需要 claude.ai 帳號或分享權限即可開啟。</li>
+                <li>App 的「📖 操作說明書」按鈕改連到 <code>manual.html</code>（相對路徑），在任何能開啟 <code>index.html</code> 的環境下都能一併使用；因為手冊本身沒有呼叫 Web Bluetooth，即使以 <code>file://</code> 直接開啟也能正常閱讀，不受第 02 節安全情境限制。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.4</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>程式新增「操作說明書」功能鍵，程式版本進至 v1.3.0</h4>
+              <ul>
+                <li>第 04 節控制項表補上「📖 操作說明書」按鈕，功能鍵列新增此按鈕、點擊於新分頁開啟本手冊。</li>
+                <li>頁首徽章同步更新為程式版本 v1.3.0。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.3</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>補充上表模擬說明</h4>
+              <ul>
+                <li>第 04 節說明「▶ 強制啟動」與「▶ 向量監控」的本質——軟體模擬上表持續送出 StartCmd，讓控制器不需接實體上表也能開機運轉並讀資料。</li>
+                <li>第 06 節補充向量監控迴圈與強制啟動迴圈的差異，並註明兩者可同時開啟。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.2</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>補充裝置選單挑選說明</h4>
+              <ul>
+                <li>第 03 節新增裝置選單示意圖與判讀原則：認 <code>ENDEX_CAN_XXXX</code> 命名、已配對裝置可直接選、忽略未知裝置。</li>
+                <li>說明 Windows 上實際彈出的是系統層級藍牙配對視窗，非 Chrome 分頁內選單。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.0</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>初版發布</h4>
+              <ul>
+                <li>建立完整 12 章節操作手冊：總覽、啟動環境、連線 BLE、功能鍵面板、StartCmd 參數、監控頻道與計數器、即時資料卡片、暫存器位元檢視、電池資訊、記錄模式、疑難排解、協定參考附錄。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>
+    <span>Endex eBike Monitor · index.html / manual.html / js/ble.js / js/protocol.js / js/app.js</span>
+    <span>本手冊依目前程式行為編寫，介面調整後請一併更新</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function (a) {
+    return document.getElementById(a.getAttribute('href').slice(1));
+  });
+  if (!('IntersectionObserver' in window)) return;
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var id = entry.target.id;
+      links.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+      });
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+  sections.forEach(function (s) { if (s) io.observe(s); });
+})();
+</script>
+</body>
+</html>

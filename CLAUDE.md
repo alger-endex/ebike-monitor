@@ -16,6 +16,8 @@ Then navigate to `http://localhost:8080`.
 
 There is no lint/test/build tooling in this repo — verify changes by loading the page and exercising the BLE flow against real hardware (or by reading through the event handlers, since there's no mock device).
 
+`manual.html` is a self-contained user manual (no shared CSS/JS with the app) linked from the "📖 操作說明書" button in `index.html`. It has no Web Bluetooth dependency, so unlike `index.html` it can be opened directly via `file://`. Keep it in sync by hand when app behavior changes — nothing regenerates it automatically.
+
 ## Architecture
 
 Single-page vanilla JS app with no framework or bundler. Three script files load in order via `<script>` tags at the bottom of [index.html](index.html):
