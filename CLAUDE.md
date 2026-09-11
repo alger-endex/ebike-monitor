@@ -43,7 +43,7 @@ Format: `0xFA 0x0D` + CAN ID (4 bytes LE) + length (1 byte) + data (8 bytes) = 1
 
 ### 2. Recording Mode batch frames
 
-Toggled with `buildRecordingModeCmd(enable)` (`0xFD` command byte). Once enabled, the controller **stops** sending Tool_R frames and instead streams fixed 242-byte batches: `command(1) + length(1) + payload(240)`. There is no magic/sync byte in this format, so `_dispatchRecordingFrames()` just slices off complete 242-byte chunks — if the stream desyncs there is no recovery.
+Toggled with `buildRecordingModeCmd(enable)` (`0xFD` command byte). Once enabled, the controller **stops** sending Tool_R frames and instead streams batches: `command(1) + length(1) + payload(length)`. The two batch types are **not** the same size on the wire — vehicle batches are 212 bytes total (210-byte payload), motor batches are 242 bytes total (240-byte payload) — so `_dispatchRecordingFrames()` reads the length byte per frame to determine how many bytes to slice, rather than assuming a fixed size. There is no magic/sync byte in this format, so if the stream desyncs (e.g. a dropped byte) there is no recovery.
 
 - `REC_BATCH_VEHICLE` (`0xFD`) → `parseVehicleStatusBatch`: 6 samples × 35 bytes of vehicle/driver/battery state per batch.
 - `REC_BATCH_MOTOR` (`0xFE`) → `parseMotorIdIqBatch`: 24 samples × 10 bytes of motor Id/Iq per batch.

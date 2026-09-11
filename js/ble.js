@@ -57,8 +57,10 @@ class BleManager {
     this._cfgChar     = null;
     this._profileName = null;
     this._rxBuf       = [];
+    this._recordingMode = false;
     this.onDisconnect = null;
     this.onCanFrame   = null;
+    this.onRecordingBatch = null;
   }
 
   get deviceInfo() {
@@ -92,6 +94,7 @@ class BleManager {
 
     this._device.addEventListener('gattserverdisconnected', () => {
       this._rxBuf = [];
+      this._recordingMode = false;
       if (this.onDisconnect) this.onDisconnect();
     });
 
@@ -209,7 +212,13 @@ class BleManager {
 
   clearBuffer() { this._rxBuf.length = 0; }
 
+  setRecordingMode(enabled) {
+    this._recordingMode = !!enabled;
+    this._rxBuf.length = 0; // 切換模式時清空緩衝，避免新舊格式的殘留 bytes 被誤判
+  }
+
   _dispatchFrames() {
+    if (this._recordingMode) { this._dispatchRecordingFrames(); return; }
     while (true) {
       let start = -1;
       for (let i = 0; i < this._rxBuf.length - 1; i++) {
@@ -223,6 +232,22 @@ class BleManager {
         const r = parseCanResponse(frame);
         if (r) this.onCanFrame(r.id, r.len, r.data);
       }
+    }
+  }
+
+  // 每筆為 command(1) + length(1) + payload(length)，總長度依 length 而定
+  // （車輛批次實際上只有 210 bytes payload / 212 bytes 總長，馬達批次為 240 / 242，
+  // 兩者不同長，不可假設定長 242；無 magic byte 可 resync，見 recording_mode_protocol.md §3）
+  _dispatchRecordingFrames() {
+    while (this._rxBuf.length >= 2) {
+      const command = this._rxBuf[0];
+      const length  = this._rxBuf[1];
+      const total   = 2 + length;
+      if (this._rxBuf.length < total) return;
+
+      const frame   = this._rxBuf.splice(0, total);
+      const payload = new Uint8Array(frame.slice(2));
+      if (this.onRecordingBatch) this.onRecordingBatch(command, length, payload);
     }
   }
 

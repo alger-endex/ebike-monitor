@@ -12,6 +12,7 @@ const ble = new BleManager();
 ble.onDisconnect = () => {
   stopDrvMonitor();
   stopMotorVectorMonitor();
+  resetRecordingModeUi();
   setDot(false);
   log('BLE 連線中斷');
 };
@@ -21,6 +22,37 @@ let rxLastTime        = 0;
 let rxIntervalSamples = [];
 let rxMinInterval     = Infinity;
 const RX_AVG_SAMPLES  = 10;
+
+let recordingModeActive  = false;
+let recVehicleBatchCount = 0;
+let recMotorBatchCount   = 0;
+let recVehicleLog        = []; // CSV 用，累積直到手動清除或自動儲存輪替
+let recMotorLog          = [];
+let recAutoSaveTimer     = null;
+let recLastSaveAt        = 0;
+let recSegmentIndex      = 1;
+const REC_AUTO_SAVE_CHECK_MS = 30000; // 每 30 秒檢查一次是否到達自動儲存間隔
+
+// 記錄模式與一般 CAN 輪詢互斥（韌體開啟記錄後停送 0xFA），
+// 所以只能在「進入記錄模式那一刻」凍結最後一筆 CAN 值當基準，事後跟記錄批次比對。
+let recBaseline = null;
+const REC_COMPARE_FIELDS = [
+  { id: 'drvBikeSpeed',      label: 'Bike Speed' },
+  { id: 'drvDriveCurrent',   label: 'Drive Current' },
+  { id: 'drvDriveVoltage',   label: 'Drive Voltage' },
+  { id: 'drvDriverTemp',     label: 'Driver Temp' },
+  { id: 'drvMotorTemp',      label: 'Motor Temp' },
+  { id: 'drvAssistLevel',    label: 'Assist Level' },
+  { id: 'drvPedalTorque',    label: 'Pedal Torque' },
+  { id: 'drvPedalCadence',   label: 'Pedal Cadence' },
+  { id: 'drvPedalPower',     label: 'Pedal Power' },
+  { id: 'drvMotorPhaseCurr', label: 'Motor Ph.Curr' },
+  { id: 'drvRotorAngle',     label: 'Rotor Angle' },
+  { id: 'drvId',             label: 'Id' },
+  { id: 'drvIq',             label: 'Iq' },
+  { id: 'drvVdCmd',          label: 'Vd Cmd' },
+  { id: 'drvVqCmd',          label: 'Vq Cmd' },
+];
 
 document.getElementById('btnRxTotalReset').addEventListener('click', () => {
   rxTotalCount      = 0;
@@ -53,7 +85,46 @@ ble.onCanFrame = (id, len, data) => {
   else if ((id === DRV_RX_ASSIST    || id === DRV_RX_ASSIST_ALT)   && len >= 8) drvUpdateAssist(data);
   else if ((id === DRV_RX_DISTANCE  || id === DRV_RX_DISTANCE_ALT) && len >= 6) drvUpdateDistance(data);
   else if  (id === DRV_RX_MOTOR_VECTOR                             && len >= 8) { mvRxCount++; mvUpdateCounters(); drvUpdateMotorVector(data); }
+  else if ((id === DRV_RX_BATTERY1_CAP    || id === DRV_RX_BATTERY_SINGLE_CAP)    && len >= 7) drvUpdateBattery1Cap(data);
+  else if ((id === DRV_RX_BATTERY1_STATUS || id === DRV_RX_BATTERY_SINGLE_STATUS) && len >= 8) drvUpdateBattery1Status(data);
+  else if  (id === DRV_RX_BATTERY2_CAP                             && len >= 7) drvUpdateBattery2Cap(data);
+  else if  (id === DRV_RX_BATTERY2_STATUS                          && len >= 8) drvUpdateBattery2Status(data);
 };
+
+ble.onRecordingBatch = (command, length, payload) => {
+  if (command === REC_BATCH_VEHICLE) {
+    const samples = parseVehicleStatusBatch(payload, length);
+    recVehicleBatchCount++;
+    recVehicleLog.push(...samples);
+    if (samples.length) drvUpdateRecordingVehicle(samples[samples.length - 1]);
+    updateRecDebug('Vehicle', command, length, payload, samples[0]);
+  } else if (command === REC_BATCH_MOTOR) {
+    const samples = parseMotorIdIqBatch(payload, length);
+    recMotorBatchCount++;
+    recMotorLog.push(...samples);
+    if (samples.length) drvUpdateRecordingMotor(samples[samples.length - 1]);
+    updateRecDebug('Motor', command, length, payload, samples[0]);
+  }
+  document.getElementById('recVehicleBatchCount').textContent = '車輛: ' + recVehicleBatchCount;
+  document.getElementById('recMotorBatchCount').textContent   = '馬達: ' + recMotorBatchCount;
+  renderRecCompareTable();
+};
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+}
+
+// kind: 'Vehicle' | 'Motor' — 對應 recDebug{kind}Raw / recDebug{kind}Parsed 的 DOM id
+function updateRecDebug(kind, command, length, payload, firstSample) {
+  const rawEl    = document.getElementById('recDebug' + kind + 'Raw');
+  const parsedEl = document.getElementById('recDebug' + kind + 'Parsed');
+  rawEl.textContent =
+    'CMD:0x' + command.toString(16).toUpperCase().padStart(2, '0') + '  LEN:' + length + '\n' +
+    bytesToHex(payload);
+  parsedEl.textContent = firstSample
+    ? Object.entries(firstSample).map(([k, v]) => k + '=' + v).join('  ')
+    : '(無有效樣本)';
+}
 
 // ── Utilities ──────────────────────────────────────────────────
 
@@ -114,6 +185,8 @@ let drvMonitorTimer  = null;
 
 // last register values — kept for SetBit modal
 let _regFault = 0, _regDRV = 0, _regStatus = 0, _regPeriph = 0;
+let _bat1FaultReg = 0, _bat1StatusReg = 0;
+let _bat2FaultReg = 0, _bat2StatusReg = 0;
 
 document.getElementById('btnDrvMonitor').addEventListener('click', () => {
   if (!ble.isOpen) { alert('請先開啟 BLE 連線'); return; }
@@ -199,6 +272,180 @@ async function motorVectorMonitorTick() {
     await ble.write(buildDrvMotorVectorReq());
   } catch { /* ignore errors during motor vector monitoring */ }
 }
+
+// ── Recording Mode（韌體批次高頻資料模式） ─────────────────────
+
+document.getElementById('btnRecordingMode').addEventListener('click', async () => {
+  if (!ble.isOpen) { alert('請先開啟 BLE 連線'); return; }
+  recordingModeActive ? await stopRecordingMode() : await startRecordingMode();
+});
+
+async function startRecordingMode() {
+  stopDrvMonitor();
+  stopMotorVectorMonitor();
+  captureRecBaseline();
+  try {
+    await ble.write(buildRecordingModeCmd(true));
+  } catch (e) { alert('開啟記錄模式失敗：' + (e.message || e)); return; }
+  ble.setRecordingMode(true);
+  recordingModeActive = true;
+  setRecordingButtonsDisabled(true);
+  const btn = document.getElementById('btnRecordingMode');
+  btn.textContent = '⏹ 停止記錄';
+  btn.classList.replace('btn-action', 'btn-danger');
+  log('記錄模式已開啟');
+
+  recSegmentIndex = 1;
+  recLastSaveAt = Date.now();
+  recAutoSaveTimer = setInterval(recAutoSaveTick, REC_AUTO_SAVE_CHECK_MS);
+}
+
+async function stopRecordingMode() {
+  try { await ble.write(buildRecordingModeCmd(false)); } catch { /* 忽略斷線時的寫入失敗 */ }
+  ble.setRecordingMode(false);
+  recordingModeActive = false;
+  setRecordingButtonsDisabled(false);
+  const btn = document.getElementById('btnRecordingMode');
+  btn.textContent = '⏺ 開始記錄';
+  btn.classList.replace('btn-danger', 'btn-action');
+  log('記錄模式已關閉');
+
+  if (recAutoSaveTimer) { clearInterval(recAutoSaveTimer); recAutoSaveTimer = null; }
+}
+
+function setRecordingButtonsDisabled(disabled) {
+  document.getElementById('btnDrvMonitor').disabled = disabled;
+  document.getElementById('btnMotorVectorMonitor').disabled = disabled;
+}
+
+// 凍結進入記錄模式那一刻的卡片數值，當作跟記錄批次比對的基準
+function captureRecBaseline() {
+  const snap = {};
+  REC_COMPARE_FIELDS.forEach(f => { snap[f.id] = document.getElementById(f.id).textContent; });
+  snap._regFault  = _regFault;
+  snap._regStatus = _regStatus;
+  recBaseline = snap;
+  renderRecCompareTable();
+}
+
+function renderRecCompareTable() {
+  const tbody = document.getElementById('recCompareBody');
+  if (!recBaseline) { tbody.innerHTML = ''; return; }
+  const rows = REC_COMPARE_FIELDS.map(f =>
+    recCompareRow(f.label, recBaseline[f.id], document.getElementById(f.id).textContent));
+  rows.push(recCompareRow('Fault Reg',  '0x' + recBaseline._regFault.toString(16).toUpperCase(),  '0x' + _regFault.toString(16).toUpperCase()));
+  rows.push(recCompareRow('Status Reg', '0x' + recBaseline._regStatus.toString(16).toUpperCase(), '0x' + _regStatus.toString(16).toUpperCase()));
+  tbody.innerHTML = rows.join('');
+}
+
+function recCompareRow(label, baseline, latest) {
+  const diff = String(baseline) !== String(latest);
+  return '<tr' + (diff ? ' class="rec-compare-diff"' : '') + '>' +
+    '<td>' + label + '</td><td>' + baseline + '</td><td>' + latest + '</td></tr>';
+}
+
+function resetRecordingModeUi() {
+  recordingModeActive = false;
+  setRecordingButtonsDisabled(false);
+  const btn = document.getElementById('btnRecordingMode');
+  btn.textContent = '⏺ 開始記錄';
+  btn.classList.replace('btn-danger', 'btn-action');
+  if (recAutoSaveTimer) { clearInterval(recAutoSaveTimer); recAutoSaveTimer = null; }
+}
+
+// 每 REC_AUTO_SAVE_CHECK_MS 檢查一次，達到使用者設定的間隔就觸發輪替匯出
+function recAutoSaveTick() {
+  if (!recordingModeActive) return;
+  if (!document.getElementById('chkRecAutoSave').checked) return;
+  const intervalMin = parseFloat(document.getElementById('recAutoSaveInterval').value) || 15;
+  if (Date.now() - recLastSaveAt >= intervalMin * 60000) {
+    autoSaveAndRotate();
+  }
+}
+
+// 匯出目前累積的記錄並清空緩衝，避免長時間錄製時記憶體無限增長
+function autoSaveAndRotate() {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  let saved = false;
+  if (recVehicleLog.length) {
+    downloadCsv('vehicle_status_seg' + recSegmentIndex + '_' + ts + '.csv', recVehicleLog);
+    recVehicleLog = [];
+    saved = true;
+  }
+  if (recMotorLog.length) {
+    downloadCsv('motor_idiq_seg' + recSegmentIndex + '_' + ts + '.csv', recMotorLog);
+    recMotorLog = [];
+    saved = true;
+  }
+  if (saved) {
+    recVehicleBatchCount = 0; recMotorBatchCount = 0;
+    document.getElementById('recVehicleBatchCount').textContent = '車輛: 0';
+    document.getElementById('recMotorBatchCount').textContent   = '馬達: 0';
+    log('自動儲存：已匯出第 ' + recSegmentIndex + ' 段記錄並清空緩衝');
+    recSegmentIndex++;
+  }
+  recLastSaveAt = Date.now();
+}
+
+function drvUpdateRecordingVehicle(s) {
+  drvSet('drvBikeSpeed',      (s.speed   * 0.1).toFixed(1));
+  drvSet('drvDriveCurrent',   (s.current * 0.1).toFixed(1));
+  drvSet('drvDriveVoltage',   (s.voltage * 0.1).toFixed(1));
+  drvSet('drvDriverTemp',     s.drvTemp  - 40);
+  drvSet('drvMotorTemp',      s.motoTemp - 40);
+  drvSet('drvAssistLevel',    s.assLevel);
+  drvSet('drvPedalTorque',    (s.pedTorq * 0.1).toFixed(1));
+  drvSet('drvPedalCadence',   s.pedCade);
+  drvSet('drvPedalPower',     s.pedPower);
+  drvSet('drvMotorPhaseCurr', s.mpCur);
+  _regFault  = s.drvFault; _regDRV = _regFault;
+  _regStatus = s.drvStatus;
+  drvUpdateBits('drvFault',  _regFault);
+  drvUpdateBits('drvDRV',    _regDRV);
+  drvUpdateBits('drvStatus', _regStatus);
+
+  _batFault1 = s.batFault1; _batFault2 = s.batFault2;
+  _rsoc1 = s.rsoc1; _rsoc2 = s.rsoc2;
+  _batStatus1 = s.batStatus1; _batStatus2 = s.batStatus2;
+  _batTemp1 = s.batTemp1; _batTemp2 = s.batTemp2;
+  _simualRSOC = s.simualRSOC;
+  _batteryDataReceived = true;
+  if (document.getElementById('modalBattery').style.display === 'flex') renderBatteryModal();
+}
+
+function drvUpdateRecordingMotor(s) {
+  drvSet('drvRotorAngle', s.angle);
+  drvSet('drvId', (s.id * 0.1).toFixed(1));
+  drvSet('drvIq', (s.iq * 0.1).toFixed(1));
+  drvSet('drvVdCmd', s.vdCmd);
+  drvSet('drvVqCmd', s.vqCmd);
+}
+
+document.getElementById('btnRecReset').addEventListener('click', () => {
+  recVehicleBatchCount = 0; recMotorBatchCount = 0;
+  recVehicleLog = []; recMotorLog = [];
+  document.getElementById('recVehicleBatchCount').textContent = '車輛: 0';
+  document.getElementById('recMotorBatchCount').textContent   = '馬達: 0';
+});
+
+function downloadCsv(filename, rows) {
+  if (!rows.length) { alert('尚無記錄資料'); return; }
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.join(','), ...rows.map(r => headers.map(h => r[h]).join(','))];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btnExportRecVehicleCsv').addEventListener('click', () => {
+  downloadCsv('vehicle_status_' + Date.now() + '.csv', recVehicleLog);
+});
+document.getElementById('btnExportRecMotorCsv').addEventListener('click', () => {
+  downloadCsv('motor_idiq_' + Date.now() + '.csv', recMotorLog);
+});
 
 // ── Driver Status monitoring loop ──────────────────────────────
 
@@ -314,6 +561,52 @@ function drvUpdateMotorVector(d) {
   drvSet('drvVqCmd',      d[7]);
 }
 
+function drvUpdateBattery1Cap(d) {
+  const fullChargeCap = d[0] | (d[1] << 8);
+  const remainCap     = d[2] | (d[3] << 8);
+  drvSet('bat1FullChargeCap', fullChargeCap === 0xFFFF ? '—' : (fullChargeCap * 0.01).toFixed(2));
+  drvSet('bat1RemainCap',     remainCap     === 0xFFFF ? '—' : (remainCap     * 0.01).toFixed(2));
+  drvSet('bat1Rsoc', d[4]);
+  drvSet('bat1Asoc', d[5] === 0xFF ? '—' : d[5]);
+  drvSet('bat1Soh',  d[6] === 0xFF ? '—' : d[6]);
+}
+
+function drvUpdateBattery1Status(d) {
+  const voltage    = d[0] | (d[1] << 8);
+  const rawCurrent = d[2] | (d[3] << 8);
+  const current    = rawCurrent > 0x7FFF ? rawCurrent - 0x10000 : rawCurrent; // S16
+  _bat1FaultReg  = d[4] | (d[5] << 8);
+  _bat1StatusReg = d[6];
+  drvSet('bat1Voltage', (voltage * 0.01).toFixed(2));
+  drvSet('bat1Current', (current * 0.01).toFixed(2));
+  drvSet('bat1Temp',    d[7] - 40);
+  drvUpdateBits('bat1FaultReg',  _bat1FaultReg);
+  drvUpdateBits('bat1StatusReg', _bat1StatusReg);
+}
+
+function drvUpdateBattery2Cap(d) {
+  const fullChargeCap = d[0] | (d[1] << 8);
+  const remainCap     = d[2] | (d[3] << 8);
+  drvSet('bat2FullChargeCap', fullChargeCap === 0xFFFF ? '—' : (fullChargeCap * 0.01).toFixed(2));
+  drvSet('bat2RemainCap',     remainCap     === 0xFFFF ? '—' : (remainCap     * 0.01).toFixed(2));
+  drvSet('bat2Rsoc', d[4]);
+  drvSet('bat2Asoc', d[5] === 0xFF ? '—' : d[5]);
+  drvSet('bat2Soh',  d[6] === 0xFF ? '—' : d[6]);
+}
+
+function drvUpdateBattery2Status(d) {
+  const voltage    = d[0] | (d[1] << 8);
+  const rawCurrent = d[2] | (d[3] << 8);
+  const current    = rawCurrent > 0x7FFF ? rawCurrent - 0x10000 : rawCurrent; // S16
+  _bat2FaultReg  = d[4] | (d[5] << 8);
+  _bat2StatusReg = d[6];
+  drvSet('bat2Voltage', (voltage * 0.01).toFixed(2));
+  drvSet('bat2Current', (current * 0.01).toFixed(2));
+  drvSet('bat2Temp',    d[7] - 40);
+  drvUpdateBits('bat2FaultReg',  _bat2FaultReg);
+  drvUpdateBits('bat2StatusReg', _bat2StatusReg);
+}
+
 function drvUpdateBits(containerId, regVal) {
   document.querySelectorAll('#' + containerId + ' .drv-bit-ind')
     .forEach((ind, i) => ind.classList.toggle('on', ((regVal >> i) & 1) === 1));
@@ -363,9 +656,55 @@ const REG_DEFS = {
     ],
     getValue: () => _regPeriph,
   },
+  Bat1Fault: {
+    title: 'Battery1 Fault Register (13-bit)',
+    labels: [
+      'bit0  DSGFETE Discharge FET Error',           'bit1  CHGFET Charge FET Error',
+      'bit2  TDW Temperature Discharging Warning',   'bit3  TDE Temperature Discharging Error',
+      'bit4  TCE Temperature Charging Error',        'bit5  COV Cell Over Voltage',
+      'bit6  CUV Cell Under Voltage',                'bit7  OCC Over Current Charge',
+      'bit8  OCD-1 1st Stage Overcurrent Discharge', 'bit9  OCD-2 2nd Stage Overcurrent Discharge',
+      'bit10 SCC Short Circuit',                     'bit11 FD Fully Discharge',
+      'bit12 NRD Nearly Discharged',
+    ],
+    getValue: () => _bat1FaultReg,
+  },
+  Bat1Status: {
+    title: 'Battery1 Status Register (8-bit)',
+    labels: [
+      'bit0  Initialize Complete', 'bit1  Active Mode',
+      'bit2  Discharge Mos On',    'bit3  Charger Detected',
+      'bit4  Charging',            'bit5  Reserved',
+      'bit6  Reserved',            'bit7  Shutdown Initiating',
+    ],
+    getValue: () => _bat1StatusReg,
+  },
+  Bat2Fault: {
+    title: 'Battery2 Fault Register (13-bit)',
+    labels: [
+      'bit0  DSGFETE Discharge FET Error',           'bit1  CHGFET Charge FET Error',
+      'bit2  TDW Temperature Discharging Warning',   'bit3  TDE Temperature Discharging Error',
+      'bit4  TCE Temperature Charging Error',        'bit5  COV Cell Over Voltage',
+      'bit6  CUV Cell Under Voltage',                'bit7  OCC Over Current Charge',
+      'bit8  OCD-1 1st Stage Overcurrent Discharge', 'bit9  OCD-2 2nd Stage Overcurrent Discharge',
+      'bit10 SCC Short Circuit',                     'bit11 FD Fully Discharge',
+      'bit12 NRD Nearly Discharged',
+    ],
+    getValue: () => _bat2FaultReg,
+  },
+  Bat2Status: {
+    title: 'Battery2 Status Register (8-bit)',
+    labels: [
+      'bit0  Initialize Complete', 'bit1  Active Mode',
+      'bit2  Discharge Mos On',    'bit3  Charger Detected',
+      'bit4  Charging',            'bit5  Reserved',
+      'bit6  Reserved',            'bit7  Shutdown Initiating',
+    ],
+    getValue: () => _bat2StatusReg,
+  },
 };
 
-['Fault', 'DRV', 'Status', 'Pepherial'].forEach(key => {
+['Fault', 'DRV', 'Status', 'Pepherial', 'Bat1Fault', 'Bat1Status', 'Bat2Fault', 'Bat2Status'].forEach(key => {
   document.getElementById('title' + key).addEventListener('click', () => openSetbitModal(key));
 });
 
@@ -402,11 +741,67 @@ function openSetbitModal(regKey) {
   modal.style.display = 'flex';
 }
 
-document.querySelectorAll('[data-close="modalSetBit"]').forEach(btn => {
+document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.getElementById('modalSetBit').style.display = 'none';
+    document.getElementById(btn.dataset.close).style.display = 'none';
   });
 });
+
+// ── Battery Info modal（電池1/電池2皆為 CAN 輪詢即時 + 記錄模式雙來源） ──
+
+let _batFault1 = 0, _batFault2 = 0;
+let _rsoc1 = 0, _rsoc2 = 0;
+let _batStatus1 = 0, _batStatus2 = 0;
+let _batTemp1 = 0, _batTemp2 = 0;
+let _simualRSOC = 0;
+let _batteryDataReceived = false; // 記錄模式批次是否至少收到過一次
+
+document.getElementById('btnBatteryInfo').addEventListener('click', () => {
+  document.getElementById('modalBattery').style.display = 'flex';
+  renderBatteryModal();
+});
+
+function renderBatteryModal() {
+  document.getElementById('batSimualRSOC').textContent = _batteryDataReceived ? _simualRSOC : '—';
+  drvSet('batRsoc1', _batteryDataReceived ? _rsoc1 : '—');
+  drvSet('batRsoc2', _batteryDataReceived ? _rsoc2 : '—');
+  drvSet('batTemp1', _batteryDataReceived ? _batTemp1 : '—');
+  drvSet('batTemp2', _batteryDataReceived ? _batTemp2 : '—');
+  drvSet('batStatus1', '0x' + _batStatus1.toString(16).toUpperCase().padStart(2, '0'));
+  drvSet('batStatus2', '0x' + _batStatus2.toString(16).toUpperCase().padStart(2, '0'));
+  renderBatteryFaultBits('batFaultBits1', _batFault1);
+  renderBatteryFaultBits('batFaultBits2', _batFault2);
+}
+
+// 記錄模式的 batFault1/batFault2 跟 CAN 輪詢的 Battery Fault Register 是同一顆
+// 電池的同一個暫存器，只是走不同傳輸路徑，bit 定義沿用 CAN 版的表格
+const BATTERY_FAULT_BIT_LABELS = [
+  'DSGFETE Discharge FET Error',           'CHGFET Charge FET Error',
+  'TDW Temperature Discharging Warning',   'TDE Temperature Discharging Error',
+  'TCE Temperature Charging Error',        'COV Cell Over Voltage',
+  'CUV Cell Under Voltage',                'OCC Over Current Charge',
+  'OCD-1 1st Stage Overcurrent Discharge', 'OCD-2 2nd Stage Overcurrent Discharge',
+  'SCC Short Circuit',                     'FD Fully Discharge',
+  'NRD Nearly Discharged',
+];
+
+function renderBatteryFaultBits(containerId, regVal) {
+  const grid = document.getElementById(containerId);
+  grid.innerHTML = '';
+  for (let bit = 15; bit >= 0; bit--) {
+    const row = document.createElement('div');
+    row.className = 'setbit-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = ((regVal >> bit) & 1) === 1;
+    cb.disabled = true;
+    const lbl = document.createElement('label');
+    lbl.textContent = 'bit' + bit + '  ' + (BATTERY_FAULT_BIT_LABELS[bit] || '(Reserved)');
+    row.appendChild(cb);
+    row.appendChild(lbl);
+    grid.appendChild(row);
+  }
+}
 
 // ── Params panel toggle (StartCmd + Tick bar) ──────────────────
 
