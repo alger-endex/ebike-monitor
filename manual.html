@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.3.1</span>
-      <span class="pill cyan">手冊版本 v1.7（見第 13 節）</span>
+      <span class="pill cyan">手冊版本 v1.8（見第 13 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -955,6 +955,15 @@
         <div class="sec-hd"><span class="sec-num">13</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v1.8</span><span class="change-date">2026-09-11</span></div>
+            <div class="change-body">
+              <h4>修正手機瀏覽器看不到主畫面內容的問題</h4>
+              <ul>
+                <li><code>.main-area</code> 補上 <code>min-height: 0</code>。原本它是 flex 版面裡的 <code>flex:1</code> 子項，預設 <code>min-height:auto</code> 讓它拒絕縮小；手機螢幕窄，功能鍵面板（StartCmd 列＋Tick 項目列）展開後 wrap 成很多列，加上頂列與狀態列疊起來常超過螢幕高度，main-area 又不肯縮小，超出的部分就被 <code>body</code> 的 <code>overflow:hidden</code> 直接裁掉——資料卡片、暫存器方塊、記錄批次 Debug 因此完全看不到也捲不到。修正後 main-area 會正確縮小並啟用自己的內部捲動，這些區塊在手機上恢復可見。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v1.7</span><span class="change-date">2026-09-11</span></div>
             <div class="change-body">
