@@ -151,6 +151,33 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
   display: inline-block;
 }
 
+/* ── Page tabs ────────────────────────────────────────────────── */
+
+.page-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.page-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+.page-tab:hover { color: #fff; }
+.page-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+.page { display: none; flex-direction: column; gap: 10px; }
+.page.active { display: flex; }
+
 /* ── Panel toggle bar ─────────────────────────────────────────── */
 
 .paneltoggle-bar {
@@ -554,6 +581,67 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
   letter-spacing: 0.5px;
 }
 
+/* ── Param R/W page ───────────────────────────────────────────── */
+
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 10px;
+}
+
+.param-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.param-row-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.param-row-inline.disabled { opacity: 0.4; }
+
+.param-note { font-size: 12px; color: var(--dim); }
+
+.param-hex { width: 64px; text-transform: uppercase; }
+
+.param-sig { min-width: 90px; color: #facc15; letter-spacing: 1px; }
+
+.param-filename {
+  flex: 1;
+  min-width: 160px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 3px 6px;
+}
+
+.param-prog {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.param-prog-fill { height: 100%; width: 0; background: var(--cyan); transition: width 0.1s; }
+
+.param-table-wrap { max-height: 45vh; overflow: auto; }
+
+.param-st-ok   { color: var(--ok) !important; }
+.param-st-err  { color: var(--danger) !important; }
+.param-st-run  { color: var(--cyan) !important; }
+.param-st-skip { color: var(--dim) !important; }
+
+.param-log { max-height: 220px; }
+
 /* ── Responsive (mobile / narrow screens) ────────────────────── */
 
 @media (max-width: 768px) {
@@ -573,6 +661,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
      所有其他列即使各自有 flex-wrap 也會因為可用寬度被撐大而「該換行卻沒換行」，
      視覺上就是整頁被橫向推出畫面、右側內容整段看不到。 */
   .topbar,
+  .page-tabs,
   .paneltoggle-bar,
   #paramsPanel,
   .cmdbar,
@@ -646,6 +735,16 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 
   .mv-interval-slider {
     width: 100px;
+  }
+
+  .page-tabs {
+    padding: 0 8px;
+  }
+
+  .page-tab {
+    flex: 1;
+    font-size: 16px;
+    padding: 10px 8px;
   }
 
   .statusbar {

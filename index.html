@@ -18,6 +18,12 @@
   <div class="app-title">Endex eBike Monitor <span id="appVersion" class="version-badge"></span></div>
 </header>
 
+<!-- ── 頁籤 ── -->
+<nav class="page-tabs">
+  <button class="page-tab active" data-page="pageMonitor">即時監控</button>
+  <button class="page-tab" data-page="pageParam">參數讀寫</button>
+</nav>
+
 <!-- ── 參數列 折疊/展開 ── -->
 <div class="paneltoggle-bar">
   <button id="btnToggleParams" class="btn">▾ 功能鍵</button>
@@ -145,6 +151,9 @@
 <!-- ── Main area ── -->
 <main class="main-area">
 
+  <!-- ══ PAGE: 即時監控 ══ -->
+  <div id="pageMonitor" class="page active">
+
   <!-- Metric cards -->
   <div class="drv-metrics">
     <div class="drv-card"><div class="drv-lbl">Bike Speed</div>    <div id="drvBikeSpeed"      class="drv-val">—</div><div class="drv-unit">km/h</div></div>
@@ -254,6 +263,78 @@
       <thead><tr><th>欄位</th><th>基準（記錄前）</th><th>最新（記錄中）</th></tr></thead>
       <tbody id="recCompareBody"></tbody>
     </table>
+  </div>
+  </div><!-- #pageMonitor -->
+
+  <!-- ══ PAGE: 參數讀寫 ══ -->
+  <div id="pageParam" class="page">
+    <div class="param-grid">
+      <div class="rec-debug-box">
+        <div class="rec-debug-title">單筆讀寫</div>
+        <div class="param-row">
+          <span class="tick-lbl">功能</span>
+          <label class="chk-label"><input type="radio" name="paramFc" value="3" checked><span>讀取 0x03</span></label>
+          <label class="chk-label"><input type="radio" name="paramFc" value="6"><span>寫入 0x06</span></label>
+        </div>
+        <div class="param-row">
+          <span class="tick-lbl">位址 0x</span>
+          <input id="paramAddr" class="cmd-num param-hex" maxlength="4" value="0000" spellcheck="false">
+          <span id="paramDataGroup" class="param-row-inline">
+            <span class="tick-lbl">數據 0x</span>
+            <input id="paramData" class="cmd-num param-hex" maxlength="4" value="0000" spellcheck="false">
+          </span>
+          <button id="btnParamSend" class="btn btn-primary">發送</button>
+        </div>
+        <div id="paramResp" class="setbit-preview">尚未收到回應</div>
+      </div>
+
+      <div class="rec-debug-box">
+        <div class="rec-debug-title">裝置 SIG（位址 0x0000~0x0003）</div>
+        <div class="param-row">
+          <button id="btnParamReadSig" class="btn btn-primary">讀取參數 SIG</button>
+        </div>
+        <div class="param-row">
+          <span class="tick-lbl">檔案 SIG</span><span id="paramSigFile" class="mv-counter param-sig">--</span>
+          <span class="tick-lbl">裝置 SIG</span><span id="paramSigDevice" class="mv-counter param-sig">--</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rec-debug-box">
+      <div class="rec-debug-title">批次讀寫</div>
+      <div class="param-row">
+        <input type="file" id="paramBatchFile" accept=".txt" style="display:none">
+        <button id="btnParamLoad" class="btn">載入 .txt 檔</button>
+        <span id="paramFileName" class="param-note">未載入</span>
+      </div>
+      <div id="paramBatchCtrls" style="display:none">
+        <div class="param-row">
+          <button id="btnParamBatchRead"  class="btn btn-primary">全部讀取</button>
+          <button id="btnParamBatchWrite" class="btn btn-action">全部寫入</button>
+          <button id="btnParamBatchSave"  class="btn">儲存結果</button>
+          <span id="paramBatchStat" class="param-note"></span>
+        </div>
+        <div class="param-row">
+          <span class="tick-lbl">檔名</span>
+          <input id="paramSaveName" class="param-filename" value="param_result.txt" spellcheck="false">
+        </div>
+        <div class="param-prog"><div id="paramProgFill" class="param-prog-fill"></div></div>
+        <div class="param-table-wrap">
+          <table class="rec-compare-table">
+            <thead><tr><th>#</th><th>位址</th><th>檔案數據</th><th>讀取結果</th><th>狀態</th></tr></thead>
+            <tbody id="paramBatchBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="rec-debug-box">
+      <div class="param-row">
+        <span class="rec-debug-title" style="margin:0">通訊記錄</span>
+        <button id="btnParamLogClear" class="btn">清除</button>
+      </div>
+      <pre id="paramLog" class="rec-debug-raw param-log"></pre>
+    </div>
   </div>
 </main>
 
@@ -409,5 +490,6 @@
 <script src="js/ble.js"></script>
 <script src="js/protocol.js"></script>
 <script src="js/app.js"></script>
+<script src="js/param.js"></script>
 </body>
 </html>

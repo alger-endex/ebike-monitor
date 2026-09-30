@@ -141,3 +141,33 @@ function parseMotorIdIqBatch(payload, length) {
   }
   return samples;
 }
+
+// ── Parameter Read/Write（參數讀寫，Modbus 風格 FC） ─────────────
+// TX data8: [0x01, FC, AddrHi, AddrLo, DataHi, DataLo, 0x00, 0x00]
+// RX 成功: [?, FC(0x03/0x06), AddrHi, AddrLo, ValHi, ValLo, ...]
+// RX 錯誤: [?, FC|0x80(0x83/0x86), ErrCode, ...]（不帶位址）
+const CAN_CMD_TX = 0x03002050;
+const CAN_CMD_RX = 0x01005020;
+
+const PARAM_FC_READ      = 0x03;
+const PARAM_FC_WRITE     = 0x06;
+const PARAM_FC_READ_ERR  = 0x83;
+const PARAM_FC_WRITE_ERR = 0x86;
+
+function buildParamCmd(fc, addr, value) {
+  return buildToolRPacket(CAN_CMD_TX, [
+    0x01, fc & 0xFF,
+    (addr  >> 8) & 0xFF, addr  & 0xFF,
+    (value >> 8) & 0xFF, value & 0xFF,
+    0x00, 0x00,
+  ]);
+}
+
+/** Returns { fc, isErr, errCode } or { fc, isErr:false, addr, val }. */
+function parseParamResp(d) {
+  const fc = d[1];
+  if (fc === PARAM_FC_READ_ERR || fc === PARAM_FC_WRITE_ERR) {
+    return { fc, isErr: true, errCode: d[2] };
+  }
+  return { fc, isErr: false, addr: (d[2] << 8) | d[3], val: (d[4] << 8) | d[5] };
+}

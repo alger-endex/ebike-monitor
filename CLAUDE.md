@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Running the App
 
-No build step, no package.json, no tests. Open `index.html` directly in Chrome or Edge. Web Bluetooth requires a **secure context**: either `localhost` or HTTPS. Opening as a `file://` URL will not work.
+No build step, no package.json, no tests. Serve the folder and open `index.html` in Chrome or Edge. Web Bluetooth requires a **secure context**: either `localhost` or HTTPS. Opening as a `file://` URL will not work.
 
 A simple local server works:
 ```
@@ -18,15 +18,31 @@ There is no lint/test/build tooling in this repo — verify changes by loading t
 
 `manual.html` is a self-contained user manual (no shared CSS/JS with the app) linked from the "📖 操作說明書" button in `index.html`. It has no Web Bluetooth dependency, so unlike `index.html` it can be opened directly via `file://`. Keep it in sync by hand when app behavior changes — nothing regenerates it automatically.
 
+`testlog/` (untracked) holds real CSV exports from Recording Mode (`vehicle_status_*.csv`, `motor_idiq_*.csv`; `_segN_` files come from auto-save rotation). They're useful as reference data for the CSV column layout and realistic value ranges.
+
+## Versioning
+
+There are two independent version numbers:
+- **App version** is `APP_VERSION` at the top of [js/app.js](js/app.js), and it's rendered into the `#appVersion` header badge. Bumps get their own `chore: 進版至 vX.Y.Z` commit.
+- **Manual version** is the `手冊版本` pill in `manual.html`'s masthead, and it goes up on every manual edit. Each change gets a new `.change-entry` at the top of the changelog section (currently §14). An app version bump also means updating the `程式版本` pill in the manual and adding a changelog entry for it.
+
+Commit messages are written in Traditional Chinese with conventional prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `style:`).
+
+## Layout / CSS
+
+All styling lives in [style.css](style.css). On desktop the page is a fixed-viewport-height `body` flex column, and `.main-area` scrolls internally. At the mobile breakpoint (`@media (max-width: 768px)`) it switches to natural whole-page scrolling: `body` gets `height:auto`, and `.main-area` gets `overflow-y:visible`. Because `body` is a flex column, every direct child needs `min-width:0` (and `min-height:0` where it applies). Otherwise one long non-wrapping line, like the StartCmd hex preview, stretches the whole page wider than the screen. Earlier mobile bugs came from this, so check it whenever you add a new top-level row or long inline content.
+
 ## Architecture
 
-Single-page vanilla JS app with no framework or bundler. Three script files load in order via `<script>` tags at the bottom of [index.html](index.html):
+Single-page vanilla JS app with no framework or bundler. Four script files load in order via `<script>` tags at the bottom of [index.html](index.html):
 
 1. **[js/ble.js](js/ble.js)** — `BleManager` class. Owns the Web Bluetooth connection lifecycle. On `open()`, it scans for any BLE device, then auto-detects the UART bridge profile by trying ESP_GATTS → NUS → HM10 → SPP in order (first service exposing both a write and notify characteristic wins). All inbound data flows through one path: the `characteristicvaluechanged` listener pushes bytes into `_rxBuf` and calls `_dispatchFrames()`, which parses complete frames out of the buffer and invokes a callback — **the app is event-driven, not polling**; nothing calls `readCanFrame()` in normal operation (it exists as a lower-level helper for one-off waits).
 
 2. **[js/protocol.js](js/protocol.js)** — Stateless packet builders, CAN ID constants, and batch-frame parsers. Two independent wire formats live here (see below).
 
 3. **[js/app.js](js/app.js)** — All UI logic and state. Runs `setTimeout`-based polling loops that write CAN requests on an interval; replies arrive later via `ble.onCanFrame`/`ble.onRecordingBatch` and update DOM elements directly by ID. Also owns Drive Current / Recording Mode CSV logging and the SetBit / Battery Info modals (read-only bit viewers).
+
+4. **[js/param.js](js/param.js)** — Parameter Read/Write page (`#pageParam`: single read/write, device SIG, `.txt` batch). It uses app.js globals (`ble`, `sleep`, `recordingModeActive`), so it must load after app.js. Unlike the fire-and-forget monitor loops, this is **request/response**: `app.js`'s `onCanFrame` forwards `CAN_CMD_RX` frames to `paramOnCanFrame()`, and only one request is outstanding at a time (`paramPending` + `paramBusy`). A reply is accepted only if its FC and address match the request, or if it's the matching error FC (`0x83`/`0x86`). Anything else is logged as `[RX SKIP]` and ignored, so a late reply to an earlier timed-out request can't be mistaken for the current one. Frames that no `onCanFrame` branch handles (unknown ID, or `CAN_CMD_RX` shorter than 6 bytes) fall through to `paramOnUnhandledFrame()`, which logs them as `[RX ID?]` only while a request is pending. This is how you tell a reply on the wrong CAN ID apart from no reply at all. Addresses `0x0000~0x0003` hold the 8-char ASCII SIG. Batch write refuses to run if the file SIG doesn't match the device SIG, and it never writes addresses ≤ `0x0020`.
 
 ## Two Wire Formats
 
@@ -58,6 +74,7 @@ Toggled with `buildRecordingModeCmd(enable)` (`0xFD` command byte). Once enabled
 - Register bit indicators use two CSS states: default `.on` = red (error), `.drv-ok.on` = green (normal/active). This distinction is set in the HTML, not in JS.
 - `drvUpdateFault()` / `drvUpdateRecordingVehicle()` set `_regDRV = _regFault` — Fault and DRV share the same response frame; the DRV 5-bit register is the lower byte of the Fault register.
 - Battery fault/status registers exist per-battery (`_bat1FaultReg`/`_bat2FaultReg`, etc.) and are updated from either live CAN battery frames or Recording Mode batches — same registers, two transport paths, bit tables in `REG_DEFS` (CAN) and `BATTERY_FAULT_BIT_LABELS` (Recording Mode modal) are kept in sync manually.
+- `<main>` holds two pages, `#pageMonitor` and `#pageParam`, switched by the `.page-tabs` bar under the top bar (handler in app.js). Switching tabs only toggles visibility. The monitor loops and the BLE connection keep running, and the function-key bar/params panel are shared by both pages.
 - The params/tick panel (`#paramsPanel`) is collapsible via `btnToggleParams`; StartCmd controls and per-request tick checkboxes live there so the top bar stays compact.
 
 ## BLE UART Profiles

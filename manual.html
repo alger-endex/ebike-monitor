@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.3.2</span>
-      <span class="pill cyan">手冊版本 v2.1（見第 13 節）</span>
+      <span class="pill cyan">手冊版本 v2.2（見第 14 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -470,9 +470,10 @@
       <a href="#sec-08"><span class="num">08</span>暫存器位元檢視</a>
       <a href="#sec-09"><span class="num">09</span>電池資訊</a>
       <a href="#sec-10"><span class="num">10</span>記錄模式</a>
-      <a href="#sec-11"><span class="num">11</span>疑難排解</a>
-      <a href="#sec-12"><span class="num">12</span>協定參考附錄</a>
-      <a href="#sec-13"><span class="num">13</span>版本紀錄</a>
+      <a href="#sec-11"><span class="num">11</span>參數讀寫</a>
+      <a href="#sec-12"><span class="num">12</span>疑難排解</a>
+      <a href="#sec-13"><span class="num">13</span>協定參考附錄</a>
+      <a href="#sec-14"><span class="num">14</span>版本紀錄</a>
     </nav>
 
     <main>
@@ -490,9 +491,10 @@
           <a href="#sec-08"><span class="num">08</span>暫存器位元檢視</a>
           <a href="#sec-09"><span class="num">09</span>電池資訊</a>
           <a href="#sec-10"><span class="num">10</span>記錄模式</a>
-          <a href="#sec-11"><span class="num">11</span>疑難排解</a>
-          <a href="#sec-12"><span class="num">12</span>協定參考附錄</a>
-      <a href="#sec-13"><span class="num">13</span>版本紀錄</a>
+          <a href="#sec-11"><span class="num">11</span>參數讀寫</a>
+          <a href="#sec-12"><span class="num">12</span>疑難排解</a>
+          <a href="#sec-13"><span class="num">13</span>協定參考附錄</a>
+      <a href="#sec-14"><span class="num">14</span>版本紀錄</a>
         </nav>
       </details>
 
@@ -513,6 +515,10 @@
           <div class="feat">
             <h4><span class="led fault"></span>暫存器位元檢視</h4>
             <p>Fault／Status／Peripheral／電池暫存器逐 bit 拆解，紅燈代表異常、綠燈代表正常運作中。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="led"></span>參數讀寫</h4>
+            <p>獨立頁籤，單筆或以 .txt 檔批次讀寫控制器參數，寫入前自動比對裝置 SIG。</p>
           </div>
         </div>
         <div class="callout" style="margin-top:16px">
@@ -605,6 +611,7 @@
               <tr><td class="key">助行</td><td class="val" style="white-space:normal">勾選即在 StartCmd 的 D1 送出 <code>0xA5</code>（Push Assist 開），取消則送 <code>0x00</code></td></tr>
               <tr><td class="key">▶ 強制啟動</td><td class="val" style="white-space:normal">模擬上表持續送出 StartCmd，開啟／停止 Driver Status 監控迴圈（1000ms 週期，依 Tick 項目勾選送出對應請求），不需接上表即可讓控制器開機運轉</td></tr>
               <tr><td class="key">⏺ 開始記錄</td><td class="val" style="white-space:normal">切換韌體進入／退出記錄模式（詳見第 10 節），與 CAN 輪詢互斥</td></tr>
+              <tr><td class="key">即時監控／參數讀寫 頁籤</td><td class="val" style="white-space:normal">連線列下方的頁籤切換主畫面：「即時監控」是資料卡片與暫存器，「參數讀寫」是單筆／批次參數讀寫（詳見第 11 節）。切換頁籤不會中斷連線或停止背景的監控迴圈，功能鍵面板兩頁共用</td></tr>
               <tr><td class="key">📖 操作說明書</td><td class="val" style="white-space:normal">開啟隨專案附帶的 <code>manual.html</code>（新分頁），不需連線、不需帳號即可使用</td></tr>
             </tbody>
           </table>
@@ -836,7 +843,74 @@
 
       <!-- 11 ─────────────────────────────────────────────── -->
       <section id="sec-11">
-        <div class="sec-hd"><span class="sec-num">11</span><h2>疑難排解</h2></div>
+        <div class="sec-hd"><span class="sec-num">11</span><h2>參數讀寫</h2></div>
+        <p class="sec-desc">點連線列下方的 <span class="btn-preview">參數讀寫</span> 頁籤切換到參數讀寫頁，直接讀取或修改控制器內部參數。
+          需先建立 BLE 連線；記錄模式期間無法使用（控制器此時不回覆 Tool_R 封包）。同一時間只會執行一個操作，執行中其餘按鈕會暫時停用。</p>
+
+        <h3>單筆讀寫</h3>
+        <ol>
+          <li>選擇功能：<b>讀取 0x03</b> 或 <b>寫入 0x06</b>（選讀取時「數據」欄停用）。</li>
+          <li>輸入 1~4 位 hex 位址（寫入時再輸入 1~4 位 hex 數據），不需加 <code>0x</code>。格式錯誤會直接提示，不會送出。</li>
+          <li>按 <span class="btn-preview">發送</span>，回應框顯示結果：成功為 <code>0xVVVV (十進位)</code>，
+            錯誤回應顯示 <code>ERR(0xCC)</code>（CC 為控制器回傳的錯誤碼），300ms 內沒收到回應會自動重試，連續 3 次都沒有回應則顯示 <code>TIMEOUT</code>。</li>
+        </ol>
+
+        <h3>裝置 SIG</h3>
+        <p>SIG 是存在位址 <code>0x0000~0x0003</code> 的 8 個 ASCII 字元，用來辨識這份參數屬於哪一種控制器／韌體。
+          按 <span class="btn-preview">讀取參數 SIG</span> 讀出「裝置 SIG」；載入批次檔後，「檔案 SIG」會顯示檔案裡同樣 4 個位址的內容，方便對照。</p>
+
+        <h3>批次讀寫</h3>
+        <p>先按 <span class="btn-preview">載入 .txt 檔</span>，檔案每行一筆「位址 4 碼 + 數據 4 碼」hex：</p>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>寫法</th><th>說明</th></tr></thead>
+            <tbody>
+              <tr><td class="key">00101234</td><td class="val" style="white-space:normal">最基本格式：位址 0x0010、數據 0x1234</td></tr>
+              <tr><td class="key">0010 1234</td><td class="val" style="white-space:normal">中間可以有空白、逗號、冒號或等號，也可以加 <code>0x</code> 前綴</td></tr>
+              <tr><td class="key">0010 1234 ; 註解</td><td class="val" style="white-space:normal"><code>;</code>、<code>#</code>、<code>//</code> 之後視為註解；整行都是註解或空白會直接跳過</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">無法解析的行會被略過，載入後的狀態列會顯示略過了幾行，請據此檢查檔案。</p>
+
+        <div class="table-wrap" style="margin-top:14px">
+          <table class="spec-table">
+            <thead><tr><th>按鈕</th><th>行為</th></tr></thead>
+            <tbody>
+              <tr><td class="key">全部讀取</td><td class="val" style="white-space:normal">逐筆讀取檔案中每個位址的目前數值，填入「讀取結果」欄；讀完若包含 0x0000~0x0003，同時更新裝置 SIG</td></tr>
+              <tr><td class="key">全部寫入</td><td class="val" style="white-space:normal">先讀取裝置 SIG 與檔案 SIG 比對，<b>不符就整批中止</b>；相符才逐筆寫入。位址 ≤ <code>0x0020</code>（SIG 與表頭區）一律標示 SKIP 不寫入</td></tr>
+              <tr><td class="key">儲存結果</td><td class="val" style="white-space:normal">以同樣格式輸出「位址＋讀取到的裝置數值」，檔名預設為「原檔名_result.txt」，可在檔名欄修改</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn" style="margin-top:14px">
+          <strong>儲存結果前請先「全部讀取」：</strong> 沒有讀取成功的列（TIMEOUT／ERR，或根本沒讀過）無法取得裝置數值，
+          會改用檔案原值輸出，並在該行尾端加上 <code>; READ FAIL (file value)</code>，儲存前也會跳出確認視窗告知筆數。
+          這個標註屬於註解，檔案仍可再次載入；但這些列的數值不是從裝置讀來的，用它當備份回寫前請先確認。
+        </div>
+
+        <h3>表格狀態</h3>
+        <div class="table-wrap">
+          <table class="spec-table">
+            <thead><tr><th>狀態</th><th>意義</th></tr></thead>
+            <tbody>
+              <tr><td class="key">...</td><td class="val" style="white-space:normal">正在處理這一筆</td></tr>
+              <tr><td class="key">OK</td><td class="val" style="white-space:normal">控制器回覆成功（寫入時已確認回應的位址與這一筆相同）</td></tr>
+              <tr><td class="key">ERR</td><td class="val" style="white-space:normal">控制器回覆錯誤（0x83／0x86），或 BLE 寫入失敗；BLE 斷線時批次會立即停止</td></tr>
+              <tr><td class="key">TIMEOUT</td><td class="val" style="white-space:normal">重試 3 次都沒有收到這個位址的回應</td></tr>
+              <tr><td class="key">SKIP</td><td class="val" style="white-space:normal">寫入保護區（≤ 0x0020），刻意不寫</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">頁面底部的「通訊記錄」會列出每一筆送出（TX）與收到（RX）的內容；
+          出現 <code>[RX SKIP]</code> 代表收到一個與目前請求不符的回應（通常是前一筆逾時後才到的殘留回應），已自動略過，不會被當成目前這一筆的結果。
+          出現 <code>[RX ID?]</code> 代表等待回應期間收到一個 CAN ID 不是 <code>0x01005020</code>（或長度不足 6 bytes）的封包，通訊記錄會列出它的 ID 與原始資料；如果某個位址一直 TIMEOUT，而每次都伴隨同一個 <code>[RX ID?]</code>，通常代表控制器用了別的 CAN ID 回覆，而不是沒有回應。</p>
+      </section>
+
+      <!-- 12 ─────────────────────────────────────────────── -->
+      <section id="sec-12">
+        <div class="sec-hd"><span class="sec-num">12</span><h2>疑難排解</h2></div>
         <p class="sec-desc">依嚴重度排序，先處理連不上線的問題，再處理資料解析異常。</p>
 
         <div class="issue">
@@ -851,7 +925,7 @@
           <div class="issue-hd"><span class="sev high"></span>選到裝置後跳出「無法自動偵測 BLE UART Characteristics」</div>
           <div class="issue-body">
             <div class="row"><b>原因</b><span>依序嘗試 ESP_GATTS／NUS／HM10／SPP 四組 Profile 都找不到同時具備 Write + Notify 的 Service。</span></div>
-            <div class="row"><b>處理</b><span>確認選到的是正確裝置（非附近其他藍牙裝置）、韌體有正確廣播對應 Service UUID；錯誤訊息裡會列出每個 Profile 各自失敗的原因，可據此比對第 12 節的 UART Profile 對照表。</span></div>
+            <div class="row"><b>處理</b><span>確認選到的是正確裝置（非附近其他藍牙裝置）、韌體有正確廣播對應 Service UUID；錯誤訊息裡會列出每個 Profile 各自失敗的原因，可據此比對第 13 節的 UART Profile 對照表。</span></div>
           </div>
         </div>
 
@@ -878,11 +952,18 @@
             <div class="row"><b>處理</b><span>檢查瀏覽器的下載設定（Chrome：<code>chrome://settings/downloads</code>）確認預設下載資料夾，或是否設成每次下載詢問位置。</span></div>
           </div>
         </div>
+        <div class="issue">
+          <div class="issue-hd"><span class="sev mid"></span>批次寫入顯示「SIG 不符，寫入中止」</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>寫入前會讀取裝置位址 0x0000~0x0003 的 SIG，與 .txt 檔同位址的數據比對；兩者不同代表這份參數檔不是給這台控制器（或這個韌體版本）用的。</span></div>
+            <div class="row"><b>處理</b><span>確認載入的檔案是否正確；若確定要寫入，應先取得對應此裝置 SIG 的參數檔，不要手動改檔案裡的 SIG 來繞過檢查。</span></div>
+          </div>
+        </div>
       </section>
 
-      <!-- 12 ─────────────────────────────────────────────── -->
-      <section id="sec-12">
-        <div class="sec-hd"><span class="sec-num">12</span><h2>協定參考附錄</h2></div>
+      <!-- 13 ─────────────────────────────────────────────── -->
+      <section id="sec-13">
+        <div class="sec-hd"><span class="sec-num">13</span><h2>協定參考附錄</h2></div>
         <p class="sec-desc">兩種各自獨立的封包格式，切換時應用程式會清空接收緩衝，避免新舊格式殘留的
           bytes 被誤判。</p>
 
@@ -909,6 +990,7 @@
               <tr><td class="key">Motor Vector</td><td class="val">0x10255030</td><td class="val">—</td></tr>
               <tr><td class="key">Battery1 Cap/Status</td><td class="val">0x146011FF / 0x146111FF</td><td class="val" style="white-space:normal">週期廣播，不需請求</td></tr>
               <tr><td class="key">Battery2 Cap/Status</td><td class="val">0x146012FF / 0x146112FF</td><td class="val" style="white-space:normal">週期廣播，不需請求</td></tr>
+              <tr><td class="key">參數讀寫</td><td class="val">TX 0x03002050 / RX 0x01005020</td><td class="val" style="white-space:normal">FC 0x03 讀／0x06 寫，詳見第 11 節</td></tr>
               <tr><td class="key">Single Battery</td><td class="val">0x146010FF / 0x146110FF</td><td class="val" style="white-space:normal">單電池車型取代電池1 ID</td></tr>
             </tbody>
           </table>
@@ -950,11 +1032,25 @@
           NUS 的 Config 特徵值用來設定鮑率，預設 460800。</p>
       </section>
 
-      <!-- 13 ─────────────────────────────────────────────── -->
-      <section id="sec-13">
-        <div class="sec-hd"><span class="sec-num">13</span><h2>版本紀錄</h2></div>
+      <!-- 14 ─────────────────────────────────────────────── -->
+      <section id="sec-14">
+        <div class="sec-hd"><span class="sec-num">14</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v2.2</span><span class="change-date">2026-09-29</span></div>
+            <div class="change-body">
+              <h4>新增「參數讀寫」功能</h4>
+              <ul>
+                <li>連線列下方新增「即時監控／參數讀寫」頁籤，參數讀寫獨立成一頁，可單筆讀取（FC 0x03）／寫入（FC 0x06）控制器參數、讀取裝置 SIG，並以 .txt 檔批次讀寫（新增第 11 節，原第 11~13 節順延為 12~14）。</li>
+                <li>回應以 FC＋位址比對，前一筆逾時後才到的殘留回應會被略過，不會被誤認為目前這一筆的結果；逾時自動重試 3 次，錯誤回應（0x83／0x86）則直接回報不重試。</li>
+                <li>批次寫入前先比對檔案與裝置的 SIG，不符即中止；位址 ≤ 0x0020 一律略過不寫。</li>
+                <li>儲存結果時，沒讀取成功的列會保留檔案原值並在行尾標註 <code>; READ FAIL</code>，避免存出的檔案混入舊值卻看不出來。</li>
+                <li>等待回應期間收到 CAN ID 不符或長度不足的封包時，會在通訊記錄以 <code>[RX ID?]</code> 列出 ID 與原始資料，方便分辨「控制器沒回應」與「回應了但 ID 不對」。</li>
+                <li>記錄模式期間參數讀寫會被擋下（控制器此時不回覆 Tool_R 封包）。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v2.1</span><span class="change-date">2026-09-11</span></div>
             <div class="change-body">

@@ -89,6 +89,8 @@ ble.onCanFrame = (id, len, data) => {
   else if ((id === DRV_RX_BATTERY1_STATUS || id === DRV_RX_BATTERY_SINGLE_STATUS) && len >= 8) drvUpdateBattery1Status(data);
   else if  (id === DRV_RX_BATTERY2_CAP                             && len >= 7) drvUpdateBattery2Cap(data);
   else if  (id === DRV_RX_BATTERY2_STATUS                          && len >= 8) drvUpdateBattery2Status(data);
+  else if  (id === CAN_CMD_RX                                      && len >= 6) paramOnCanFrame(data); // param.js
+  else paramOnUnhandledFrame(id, len, data); // 未知 ID／長度不足：參數請求等待中才記錄
 };
 
 ble.onRecordingBatch = (command, length, payload) => {
@@ -811,6 +813,16 @@ document.getElementById('btnToggleParams').addEventListener('click', () => {
   const hidden = panel.style.display === 'none';
   panel.style.display = hidden ? '' : 'none';
   btn.textContent = hidden ? '▾ 功能鍵' : '▸ 功能鍵';
+});
+
+// ── Page tabs（即時監控 / 參數讀寫） ────────────────────────────
+// 只切換顯示，不影響背景的監控迴圈與 BLE 連線
+
+document.querySelectorAll('.page-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.page-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === tab.dataset.page));
+  });
 });
 
 // ── Init ───────────────────────────────────────────────────────
