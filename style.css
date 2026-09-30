@@ -279,8 +279,8 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 /* ── Metric cards ─────────────────────────────────────────────── */
 
 .drv-metrics {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 8px;
 }
 
@@ -316,6 +316,17 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 }
 
 /* ── Register boxes ───────────────────────────────────────────── */
+
+/* 力矩感測器卡片群組：外框沿用 drv-reg-box，內層卡片用底色區隔 */
+.ts-group { min-width: 0; }
+.ts-group .drv-card { background: var(--bg); }
+.ts-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+}
 
 .drv-registers {
   display: grid;

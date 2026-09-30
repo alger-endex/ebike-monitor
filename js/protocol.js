@@ -68,6 +68,20 @@ const DRV_RX_BATTERY2_STATUS = 0x146112FF; // Voltage/Current/FaultReg/StatusReg
 const DRV_RX_BATTERY_SINGLE_CAP    = 0x146010FF;
 const DRV_RX_BATTERY_SINGLE_STATUS = 0x146110FF;
 
+// ── 力矩感測器（主動廣播，不需送請求） ───────────────────────────
+// D0 起始位 0xFF / D1 溫度(0~210 → -30~180°C) / D2 力矩低 8 位 / D3 踏頻
+// D4 馬達轉速高位(bit7..6 = 力矩高 2 位，bit5..0 = 轉速高 6 位) / D5 馬達轉速低位
+// D6 bit7 = 踩踏板開機識別、bit6..0 = 變速檔位 / D7 校驗位
+const TORQUE_SENSOR_RX = 0x18F50133;
+
+// 力矩感測器總線命令：D0 = 0xF0 總線靜默（停止廣播）／0xF1 總線恢復正常，D1~D7 保留填 0
+const TORQUE_SENSOR_BUS_CMD_TX = 0x08F20020;
+const TS_BUS_SILENT = 0xF0;
+const TS_BUS_RESUME = 0xF1;
+function buildTorqueSensorBusCmd(cmd) {
+  return buildToolRPacket(TORQUE_SENSOR_BUS_CMD_TX, [cmd & 0xFF, 0, 0, 0, 0, 0, 0, 0]);
+}
+
 // ── Recording Mode ────────────────────────────────────────────
 // 開啟後裝置停止逐筆 0xFA CAN frame notify，改送批次封包：
 // command[1] + length[1] + payload[length]。兩種批次型別長度不同

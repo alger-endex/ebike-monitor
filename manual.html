@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.4.0</span>
-      <span class="pill cyan">手冊版本 v2.3（見第 14 節）</span>
+      <span class="pill cyan">手冊版本 v2.4（見第 14 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -703,12 +703,23 @@
               <tr><td class="key">Iq</td><td class="val">A</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
               <tr><td class="key">Vd Cmd</td><td class="val">digit</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
               <tr><td class="key">Vq Cmd</td><td class="val">digit</td><td class="val" style="white-space:normal">Motor Vector 回覆</td></tr>
+              <tr><td class="key">TS Temp</td><td class="val">°C</td><td class="val" style="white-space:normal">力矩感測器廣播 0x18F50133（原始值 0~210 對應 -30~180°C，超出範圍顯示「—」）</td></tr>
+              <tr><td class="key">TS Torque</td><td class="val">digit</td><td class="val" style="white-space:normal">力矩感測器廣播（10-bit 原始值：D4 高 2 位＋D2）</td></tr>
+              <tr><td class="key">TS Cadence</td><td class="val">digit</td><td class="val" style="white-space:normal">力矩感測器廣播（D3 踏頻原始值）</td></tr>
+              <tr><td class="key">TS Motor Spd</td><td class="val">digit</td><td class="val" style="white-space:normal">力矩感測器廣播（14-bit 原始值：D4 低 6 位＋D5）</td></tr>
+              <tr><td class="key">TS Gear</td><td class="val">digit</td><td class="val" style="white-space:normal">力矩感測器廣播（D6 bit0~6 變速檔位）</td></tr>
+              <tr><td class="key">TS Pedal</td><td class="val">bit</td><td class="val" style="white-space:normal">力矩感測器廣播（D6 bit7 踩踏板開機識別，1 = 由踩踏喚醒）</td></tr>
+              <tr><td class="key">TS Checksum</td><td class="val">hex</td><td class="val" style="white-space:normal">力矩感測器廣播（D7 校驗位，僅顯示，未驗證）</td></tr>
             </tbody>
           </table>
         </div>
         <div class="callout" style="margin-top:14px">
           <strong>記錄模式期間的例外：</strong> Total Assist／Single Trip／Remain Dist 三張卡片、以及 Peripheral
           暫存器，韌體的批次協定本身就沒有回傳這些欄位，記錄期間會停在「記錄前最後一次 CAN 值」不再變動——這是協定的結構性缺口，不是程式漏接，比對表（第 10 節）也刻意不列這幾項。
+        </div>
+        <div class="callout" style="margin-top:14px">
+          <strong>力矩感測器（TS）卡片：</strong> 集中在主卡片區下方的「Torque Sensor · 0x18F50133」獨立區塊。區塊上方的統計列顯示接收筆數與間隔（最近一次／平均／最短／最長，按 ↺ 歸零），可用來量測感測器的廣播週期。統計列右側的「■ 靜默 (F0)」「▶ 恢復 (F1)」會送出總線命令 CAN ID <code>0x08F20020</code>（D0 = <code>0xF0</code> 總線靜默，要求感測器停止廣播；<code>0xF1</code> 總線恢復正常；D1~D7 保留填 0），按下後可從 RX 筆數是否停止增加判斷命令是否生效。多筆 CAN 封包可能擠在同一個 BLE 通知裡一起到達，這時間隔會接近 0 ms，量到的是手機端的接收間隔，不一定等於 CAN bus 上的真實週期。由感測器主動廣播 CAN ID <code>0x18F50133</code>，不需勾選任何 Tick 項目；只接受 D0 起始位為 <code>0xFF</code> 的封包。
+          記錄模式期間控制器不轉送逐筆 CAN 封包，這幾張卡片會停在最後一次的值。
         </div>
       </section>
 
@@ -852,7 +863,7 @@
           <li>選擇功能：<b>讀取 0x03</b> 或 <b>寫入 0x06</b>（選讀取時「數據」欄停用）。</li>
           <li>輸入 1~4 位 hex 位址（寫入時再輸入 1~4 位 hex 數據），不需加 <code>0x</code>。格式錯誤會直接提示，不會送出。</li>
           <li>按 <span class="btn-preview">發送</span>，回應框顯示結果：成功為 <code>0xVVVV (十進位)</code>，
-            錯誤回應顯示 <code>ERR(0xCC)</code>（CC 為控制器回傳的錯誤碼），300ms 內沒收到回應會自動重試，連續 3 次都沒有回應則顯示 <code>TIMEOUT</code>。</li>
+            錯誤回應顯示 <code>ERR(0xCC)</code>（CC 為控制器回傳的錯誤碼），送出後 300ms 內完全沒收到任何封包，或雖然有收到但都不是這一筆的回應、且從送出起算已超過 1 秒（或累積略過 20 筆不符的封包），就算這次沒有回應並自動重試，連續 3 次都沒有回應則顯示 <code>TIMEOUT</code>。</li>
         </ol>
 
         <h3>裝置 SIG</h3>
@@ -879,6 +890,7 @@
             <tbody>
               <tr><td class="key">全部讀取</td><td class="val" style="white-space:normal">逐筆讀取檔案中每個位址的目前數值，填入「讀取結果」欄；讀完若包含 0x0000~0x0003，同時更新裝置 SIG</td></tr>
               <tr><td class="key">全部寫入</td><td class="val" style="white-space:normal">先讀取裝置 SIG 與檔案 SIG 比對，<b>不符就整批中止</b>；相符才逐筆寫入。位址 ≤ <code>0x0020</code>（SIG 與表頭區）一律標示 SKIP 不寫入</td></tr>
+              <tr><td class="key">■ 停止</td><td class="val" style="white-space:normal">只在全部讀取／全部寫入進行中可按。立刻中斷目前這一筆的等待並結束批次，已完成的列保留結果，狀態列顯示「已停止（完成筆數/總筆數）」。寫入時若在 SIG 比對階段停止，不會寫入任何參數</td></tr>
               <tr><td class="key">儲存結果</td><td class="val" style="white-space:normal">以同樣格式輸出「位址＋讀取到的裝置數值」，檔名預設為「原檔名_result.txt」，可在檔名欄修改</td></tr>
             </tbody>
           </table>
@@ -900,11 +912,12 @@
               <tr><td class="key">ERR</td><td class="val" style="white-space:normal">控制器回覆錯誤（0x83／0x86），或 BLE 寫入失敗；BLE 斷線時批次會立即停止</td></tr>
               <tr><td class="key">TIMEOUT</td><td class="val" style="white-space:normal">重試 3 次都沒有收到這個位址的回應</td></tr>
               <tr><td class="key">SKIP</td><td class="val" style="white-space:normal">寫入保護區（≤ 0x0020），刻意不寫</td></tr>
+              <tr><td class="key">STOP</td><td class="val" style="white-space:normal">按下停止時正在處理的那一筆。讀取時等同未讀取；寫入時結果欄顯示「未確認」，代表寫入命令可能已送達控制器、只是沒等到回應，請重新讀取確認實際值</td></tr>
             </tbody>
           </table>
         </div>
         <p style="margin-top:14px">頁面底部的「通訊記錄」會列出每一筆送出（TX）與收到（RX）的內容；
-          出現 <code>[RX SKIP]</code> 代表收到一個與目前請求不符的回應（通常是前一筆逾時後才到的殘留回應），已自動略過，不會被當成目前這一筆的結果。
+          出現 <code>[RX SKIP]</code> 代表收到一個與目前請求不符的回應（通常是前一筆逾時後才到的殘留回應），已自動略過，不會被當成目前這一筆的結果；略過後會繼續等，直到從送出起算滿 1 秒。<code>[RX SKIP]</code> 與 <code>[RX ID?]</code> 合計滿 20 筆會出現 <code>[SKIP 上限]</code> 並放棄這次嘗試。
           出現 <code>[RX ID?]</code> 代表等待回應期間收到一個 CAN ID 不是 <code>0x01005020</code>（或長度不足 6 bytes）的封包，通訊記錄會列出它的 ID 與原始資料；如果某個位址一直 TIMEOUT，而每次都伴隨同一個 <code>[RX ID?]</code>，通常代表控制器用了別的 CAN ID 回覆，而不是沒有回應。</p>
       </section>
 
@@ -1037,6 +1050,21 @@
         <div class="sec-hd"><span class="sec-num">14</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v2.4</span><span class="change-date">2026-09-30</span></div>
+            <div class="change-body">
+              <h4>新增力矩感測器卡片、iOS Bluefy 相容性修正</h4>
+              <ul>
+                <li>即時資料卡片新增 TS Temp／TS Torque／TS Cadence／TS Motor Spd／TS Gear／TS Pedal／TS Checksum，解析力矩感測器廣播 CAN ID 0x18F50133（第 7 節）。</li>
+                <li>TS 區塊新增接收間隔統計（筆數／最近一次／平均／最短／最長）。</li>
+                <li>批次讀寫新增「■ 停止」按鈕，可中途結束全部讀取／全部寫入；新增表格狀態 STOP（第 11 節）。</li>
+                <li>參數讀寫逾時規則調整：送出後 300ms 內無任何封包即逾時；收到不符的封包（[RX SKIP]／[RX ID?]）改為繼續等到送出後 1 秒，不再縮短為 20ms；略過上限由 10 筆改為 20 筆（第 11 節）。</li>
+                <li>TS 區塊新增力矩感測器總線命令按鈕：靜默 (F0)／恢復 (F1)，CAN ID 0x08F20020。</li>
+                <li>TS 卡片集中在主卡片區下方的獨立區塊；即時資料卡片改為等寬格線排列，最後一排卡片不再被拉伸成整排寬。</li>
+                <li>BLE 連線改用完整 128-bit UUID，並在錯誤訊息標示失敗步驟，iOS 可用 Bluefy 瀏覽器連線。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v2.3</span><span class="change-date">2026-09-30</span></div>
             <div class="change-body">

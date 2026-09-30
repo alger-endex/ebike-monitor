@@ -8,9 +8,9 @@
  * FC + 位址比對；不符的（例如前一筆逾時後才到的殘留回應）略過再等。
  */
 
-const PARAM_FIRST_MS      = 300;  // 送出後等第一個回應（BLE 往返較慢）
-const PARAM_NEXT_MS       = 20;   // 略過一個不符的回應後再等
-const PARAM_MAX_SKIP      = 10;
+const PARAM_FIRST_MS      = 300;  // 送出後這段時間內完全沒收到任何 frame → 本次逾時
+const PARAM_MAX_WAIT_MS   = 1000; // 有收到不符的 frame 就繼續等，但從送出起算最多等這麼久
+const PARAM_MAX_SKIP      = 20;   // 不符的 frame（FC/位址不符或 CAN ID 不符）累積上限
 const PARAM_RETRY         = 3;    // 只有逾時才重試；錯誤回應(0x83/0x86)是確定結果，不重試
 const PARAM_RETRY_GAP_MS  = 15;
 const PARAM_STEP_GAP_MS   = 100;  // 批次每筆之間的間隔
@@ -21,6 +21,8 @@ const PARAM_LOG_MAX_LINES = 300;
 let paramPending = null;  // (resp) => void，目前等待中的請求
 let paramBusy    = false;
 let paramBatch   = [];    // { addr, data, readVal, result, status }
+let paramStopReq = false; // 批次中途停止：由「停止」按鈕設定，迴圈每筆檢查
+let paramAbortCurrent = null; // 目前等待中的請求的中斷函式（停止時立刻結束等待，不必等逾時）
 
 function hex4(v) { return v.toString(16).toUpperCase().padStart(4, '0'); }
 function hex2(v) { return v.toString(16).toUpperCase().padStart(2, '0'); }
@@ -63,6 +65,7 @@ function paramOnUnhandledFrame(id, len, data) {
     ? 'CAN_CMD_RX 長度不足（需 ≥ 6）'
     : 'CAN ID 不符 ' + idHex + ' ≠ CAN_CMD_RX 0x' + CAN_CMD_RX.toString(16).toUpperCase().padStart(8, '0');
   paramLog('[RX ID?] ' + why + '  len=' + len + ' DATA:' + bytesToHex(data));
+  paramPending({ wrongId: true }); // 計入略過次數
 }
 
 // ── Request / response ─────────────────────────────────────────
@@ -71,20 +74,30 @@ function paramOnUnhandledFrame(id, len, data) {
 function paramRequestOnce(fc, addr, value) {
   return new Promise(async (resolve) => {
     let timer = null, skipped = 0, done = false;
+    const startAt = performance.now();
     const finish = (v) => {
       if (done) return;
-      done = true; clearTimeout(timer); paramPending = null; resolve(v);
+      done = true; clearTimeout(timer); paramPending = null; paramAbortCurrent = null; resolve(v);
     };
-    const arm = (ms) => { clearTimeout(timer); timer = setTimeout(() => finish(null), ms); };
+    paramAbortCurrent = () => finish(null);
+    const arm = (ms) => { clearTimeout(timer); timer = setTimeout(() => finish(null), Math.max(0, ms)); };
+    // 收到過不符的 frame 代表通道有在動，延長到從送出起算的最長等待時間
+    const armMaxWait = () => arm(startAt + PARAM_MAX_WAIT_MS - performance.now());
 
     // 先掛監聽再送出，避免回應在 write 完成前就到而被漏掉
     paramPending = (r) => {
-      if (r.fc === (fc | 0x80))            { finish(r); return; }
-      if (r.fc === fc && r.addr === addr)  { finish(r); return; }
-      paramLog('[RX SKIP] ' + paramFcName(r.fc) + (r.isErr ? '' : ' Addr:0x' + hex4(r.addr)) +
-               ' ≠ 請求 ' + paramFcName(fc) + ' 0x' + hex4(addr));
-      if (++skipped >= PARAM_MAX_SKIP) { finish(null); return; }
-      arm(PARAM_NEXT_MS);
+      if (!r.wrongId) {
+        if (r.fc === (fc | 0x80))            { finish(r); return; }
+        if (r.fc === fc && r.addr === addr)  { finish(r); return; }
+        paramLog('[RX SKIP] ' + paramFcName(r.fc) + (r.isErr ? '' : ' Addr:0x' + hex4(r.addr)) +
+                 ' ≠ 請求 ' + paramFcName(fc) + ' 0x' + hex4(addr));
+      }
+      if (++skipped >= PARAM_MAX_SKIP) {
+        paramLog('[SKIP 上限] 已略過 ' + skipped + ' 筆不符的 frame，放棄本次 ' + paramFcName(fc) + ' 0x' + hex4(addr));
+        finish(null);
+        return;
+      }
+      armMaxWait();
     };
 
     try {
@@ -94,14 +107,17 @@ function paramRequestOnce(fc, addr, value) {
       finish({ sendErr: e.message || String(e) });
       return;
     }
-    if (!done) arm(PARAM_FIRST_MS);
+    // write 期間若已收到不符的 frame，維持最長等待期限，不要縮回 300 ms
+    if (!done) { if (skipped > 0) armMaxWait(); else arm(PARAM_FIRST_MS); }
   });
 }
 
 async function paramRequest(fc, addr, value = 0) {
   for (let i = 0; i < PARAM_RETRY; i++) {
+    if (paramStopReq) return null;
     const r = await paramRequestOnce(fc, addr, value);
     if (r) return r;
+    if (paramStopReq) return null; // 被停止中斷的不算逾時，也不重試
     paramLog('[TIMEOUT] ' + paramFcName(fc) + ' 0x' + hex4(addr) + (i + 1 < PARAM_RETRY ? '，重試' : ''));
     await sleep(PARAM_RETRY_GAP_MS);
   }
@@ -123,7 +139,26 @@ const PARAM_ACTION_BTNS = ['btnParamSend', 'btnParamReadSig', 'btnParamLoad',
 function paramSetBusy(busy) {
   paramBusy = busy;
   PARAM_ACTION_BTNS.forEach(id => { document.getElementById(id).disabled = busy; });
+  if (!busy) {
+    document.getElementById('btnParamBatchStop').disabled = true;
+    paramStopReq = false; // 不能殘留到之後的單筆讀寫，否則 paramRequest 會直接返回
+  }
 }
+
+// 批次開始時呼叫：清掉上次的停止要求並啟用「停止」按鈕
+function paramBatchBegin() {
+  paramStopReq = false;
+  paramSetBusy(true);
+  document.getElementById('btnParamBatchStop').disabled = false;
+}
+
+document.getElementById('btnParamBatchStop').addEventListener('click', () => {
+  if (!paramBusy || paramStopReq) return;
+  paramStopReq = true;
+  document.getElementById('btnParamBatchStop').disabled = true;
+  paramLog('[STOP] 使用者要求停止批次');
+  if (paramAbortCurrent) paramAbortCurrent();
+});
 
 // 記錄模式下控制器停送 Tool_R frame，參數回應收不到
 function paramNotReadyReason() {
@@ -259,7 +294,7 @@ document.getElementById('paramBatchFile').addEventListener('change', function ()
 
 // ── 批次：表格 ─────────────────────────────────────────────────
 
-const PARAM_STATUS_CLASS = { OK: 'param-st-ok', ERR: 'param-st-err', TIMEOUT: 'param-st-err', '...': 'param-st-run', SKIP: 'param-st-skip' };
+const PARAM_STATUS_CLASS = { OK: 'param-st-ok', ERR: 'param-st-err', TIMEOUT: 'param-st-err', '...': 'param-st-run', SKIP: 'param-st-skip', STOP: 'param-st-skip' };
 
 function renderParamBatchTable() {
   const tbody = document.getElementById('paramBatchBody');
@@ -289,22 +324,26 @@ function setParamProgress(done, total, label) {
 document.getElementById('btnParamBatchRead').addEventListener('click', async () => {
   const reason = paramNotReadyReason();
   if (reason) { alert(reason); return; }
-  paramSetBusy(true);
-  let ok = 0, err = 0;
+  paramBatchBegin();
+  let ok = 0, err = 0, done = 0;
   for (let i = 0; i < paramBatch.length; i++) {
+    if (paramStopReq) break;
     const p = paramBatch[i];
     p.status = '...'; p.result = '--'; p.readVal = null;
     updateParamBatchRow(i);
     setParamProgress(i, paramBatch.length, '讀取 ' + (i + 1) + '/' + paramBatch.length);
     const r = await paramRequest(PARAM_FC_READ, p.addr);
+    if (!r && paramStopReq) { p.status = 'STOP'; updateParamBatchRow(i); break; }
     p.result = paramResultText(r);
     if (r && !r.isErr && !r.sendErr) { p.readVal = r.val; p.status = 'OK'; ok++; }
     else                             { p.status = r ? 'ERR' : 'TIMEOUT'; err++; }
     updateParamBatchRow(i);
+    done++;
     if (r && r.sendErr) break; // 斷線，後面也不會成功
     await sleep(PARAM_STEP_GAP_MS);
   }
-  setParamProgress(1, 1, '讀取完成：OK ' + ok + '  ERR/TIMEOUT ' + err);
+  const head = paramStopReq ? '讀取已停止（' + done + '/' + paramBatch.length + '）' : '讀取完成';
+  setParamProgress(paramStopReq ? done : 1, paramStopReq ? paramBatch.length : 1, head + '：OK ' + ok + '  ERR/TIMEOUT ' + err);
   const devSig = sigToAscii(PARAM_SIG_ADDRS.map(a => {
     const p = paramBatch.find(x => x.addr === a);
     return p ? p.readVal : null;
@@ -322,9 +361,14 @@ document.getElementById('btnParamBatchWrite').addEventListener('click', async ()
   const fileSig = paramFileSig();
   if (!fileSig) { statEl.textContent = '⚠ 檔案未包含 0x0000~0x0003，無法比對 SIG，寫入中止'; return; }
 
-  paramSetBusy(true);
+  paramBatchBegin();
   statEl.textContent = '比對 SIG 中…';
   const devSig = await paramReadDeviceSig();
+  if (paramStopReq) {
+    statEl.textContent = '寫入已停止（SIG 比對中途停止，尚未寫入任何參數）';
+    paramSetBusy(false);
+    return;
+  }
   document.getElementById('paramSigDevice').textContent = devSig || 'ERR';
   if (devSig !== fileSig) {
     statEl.textContent = '⚠ SIG 不符，寫入中止。檔案「' + fileSig + '」 裝置「' + (devSig || 'ERR') + '」';
@@ -333,25 +377,30 @@ document.getElementById('btnParamBatchWrite').addEventListener('click', async ()
   }
   paramLog('[SIG OK] 檔案「' + fileSig + '」= 裝置「' + devSig + '」，開始寫入');
 
-  let ok = 0, err = 0, skip = 0;
+  let ok = 0, err = 0, skip = 0, done = 0;
   for (let i = 0; i < paramBatch.length; i++) {
+    if (paramStopReq) break;
     const p = paramBatch[i];
     setParamProgress(i, paramBatch.length, '寫入 ' + (i + 1) + '/' + paramBatch.length);
     if (p.addr <= PARAM_WRITE_PROTECT) {
-      p.status = 'SKIP'; skip++;
+      p.status = 'SKIP'; skip++; done++;
       updateParamBatchRow(i);
       continue;
     }
     p.status = '...';
     updateParamBatchRow(i);
     const r = await paramRequest(PARAM_FC_WRITE, p.addr, p.data);
+    // 寫入命令可能已送達控制器，只是沒等到回應，所以標成「未確認」而不是當作沒寫
+    if (!r && paramStopReq) { p.status = 'STOP'; p.result = '未確認'; updateParamBatchRow(i); break; }
     if (r && !r.isErr && !r.sendErr) { p.status = 'OK'; ok++; }
     else                             { p.status = r ? 'ERR' : 'TIMEOUT'; err++; }
     updateParamBatchRow(i);
+    done++;
     if (r && r.sendErr) break;
     await sleep(PARAM_STEP_GAP_MS);
   }
-  setParamProgress(1, 1, '寫入完成：OK ' + ok + '  ERR/TIMEOUT ' + err + '  SKIP ' + skip);
+  const head = paramStopReq ? '寫入已停止（' + done + '/' + paramBatch.length + '）' : '寫入完成';
+  setParamProgress(paramStopReq ? done : 1, paramStopReq ? paramBatch.length : 1, head + '：OK ' + ok + '  ERR/TIMEOUT ' + err + '  SKIP ' + skip);
   paramSetBusy(false);
 });
 

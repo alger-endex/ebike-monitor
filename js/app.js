@@ -14,6 +14,7 @@ ble.onDisconnect = () => {
   stopMotorVectorMonitor();
   resetRecordingModeUi();
   setDot(false);
+  tsLastTime = 0; // 重連後的第一筆不跟斷線前那筆算間隔
   log('BLE 連線中斷');
 };
 
@@ -89,6 +90,7 @@ ble.onCanFrame = (id, len, data) => {
   else if ((id === DRV_RX_BATTERY1_STATUS || id === DRV_RX_BATTERY_SINGLE_STATUS) && len >= 8) drvUpdateBattery1Status(data);
   else if  (id === DRV_RX_BATTERY2_CAP                             && len >= 7) drvUpdateBattery2Cap(data);
   else if  (id === DRV_RX_BATTERY2_STATUS                          && len >= 8) drvUpdateBattery2Status(data);
+  else if  (id === TORQUE_SENSOR_RX && len >= 8 && data[0] === 0xFF)           { tsRecordInterval(); drvUpdateTorqueSensor(data); }
   else if  (id === CAN_CMD_RX                                      && len >= 6) paramOnCanFrame(data); // param.js
   else paramOnUnhandledFrame(id, len, data); // 未知 ID／長度不足：參數請求等待中才記錄
 };
@@ -561,6 +563,58 @@ function drvUpdateMotorVector(d) {
   drvSet('drvIq',         ((d[4] | (d[5] << 8)) * 0.1).toFixed(1));
   drvSet('drvVdCmd',      d[6]);
   drvSet('drvVqCmd',      d[7]);
+}
+
+// 力矩感測器接收間隔統計（感測器主動廣播，用來量測廣播週期）。
+// 注意：多筆 CAN frame 可能擠在同一個 BLE notification 裡到達，此時間隔會接近 0 ms，
+// 量到的是「BLE 到手機」的間隔，不一定等於 CAN bus 上的真實週期。
+let tsRxCount = 0, tsLastTime = 0, tsSum = 0, tsSamples = 0, tsMin = Infinity, tsMax = 0;
+
+function tsRecordInterval() {
+  const now = performance.now();
+  tsRxCount++;
+  drvSet('tsRxCount', tsRxCount);
+  if (tsLastTime > 0) {
+    const delta = Math.round(now - tsLastTime);
+    tsSum += delta; tsSamples++;
+    if (delta < tsMin) tsMin = delta;
+    if (delta > tsMax) tsMax = delta;
+    drvSet('tsIntervalLast', delta + ' ms');
+    drvSet('tsIntervalAvg',  Math.round(tsSum / tsSamples) + ' ms');
+    drvSet('tsIntervalMin',  tsMin + ' ms');
+    drvSet('tsIntervalMax',  tsMax + ' ms');
+  }
+  tsLastTime = now;
+}
+
+document.getElementById('btnTsStatsReset').addEventListener('click', () => {
+  tsRxCount = 0; tsLastTime = 0; tsSum = 0; tsSamples = 0; tsMin = Infinity; tsMax = 0;
+  drvSet('tsRxCount', 0);
+  for (const id of ['tsIntervalLast', 'tsIntervalAvg', 'tsIntervalMin', 'tsIntervalMax']) drvSet(id, '— ms');
+});
+
+async function tsSendBusCmd(cmd, label) {
+  if (!ble.isOpen) { alert('請先開啟 BLE 連線'); return; }
+  try {
+    await ble.write(buildTorqueSensorBusCmd(cmd));
+    log('力矩感測器總線命令已送出：' + label + '（0x08F20020 D0=0x' + cmd.toString(16).toUpperCase() + '）');
+  } catch (e) {
+    log('❌ 力矩感測器總線命令失敗：' + (e.message || e));
+  }
+}
+document.getElementById('btnTsBusSilent').addEventListener('click', () => tsSendBusCmd(TS_BUS_SILENT, '總線靜默'));
+document.getElementById('btnTsBusResume').addEventListener('click', () => tsSendBusCmd(TS_BUS_RESUME, '總線恢復'));
+
+// 力矩 10-bit = D4 高 2 位 + D2；馬達轉速 14-bit = D4 低 6 位 + D5
+// D6：bit7 = 踩踏板開機識別，bit6..0 = 變速檔位
+function drvUpdateTorqueSensor(d) {
+  drvSet('tsTemp',       d[1] <= 210 ? d[1] - 30 : '—');
+  drvSet('tsTorque',     ((d[4] >> 6) << 8) | d[2]);
+  drvSet('tsCadence',    d[3]);
+  drvSet('tsMotorSpeed', ((d[4] & 0x3F) << 8) | d[5]);
+  drvSet('tsGear',       d[6] & 0x7F);
+  drvSet('tsPedalWake',  (d[6] >> 7) & 1);
+  drvSet('tsChecksum',   d[7].toString(16).toUpperCase().padStart(2, '0'));
 }
 
 function drvUpdateBattery1Cap(d) {

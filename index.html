@@ -176,6 +176,32 @@
     <div class="drv-card"><div class="drv-lbl">Vq Cmd</div>       <div id="drvVqCmd"          class="drv-val">—</div><div class="drv-unit">digit</div></div>
   </div>
 
+  <!-- 力矩感測器 0x18F50133（主動廣播） -->
+  <div class="drv-reg-box ts-group">
+    <div class="drv-reg-title">Torque Sensor · 0x18F50133</div>
+    <div class="ts-stats">
+      <span class="tick-lbl">RX：</span>  <span id="tsRxCount"     class="mv-counter">0</span>
+      <span class="tick-lbl">間隔：</span><span id="tsIntervalLast" class="mv-counter">— ms</span>
+      <span class="tick-lbl">平均：</span><span id="tsIntervalAvg"  class="mv-counter">— ms</span>
+      <span class="tick-lbl">最短：</span><span id="tsIntervalMin"  class="mv-counter">— ms</span>
+      <span class="tick-lbl">最長：</span><span id="tsIntervalMax"  class="mv-counter">— ms</span>
+      <button id="btnTsStatsReset" class="btn">↺</button>
+      <div class="sep"></div>
+      <span class="tick-lbl">總線命令 0x08F20020：</span>
+      <button id="btnTsBusSilent" class="btn">■ 靜默 (F0)</button>
+      <button id="btnTsBusResume" class="btn">▶ 恢復 (F1)</button>
+    </div>
+    <div class="drv-metrics">
+      <div class="drv-card"><div class="drv-lbl">TS Temp</div>      <div id="tsTemp"       class="drv-val">—</div><div class="drv-unit">°C</div></div>
+      <div class="drv-card"><div class="drv-lbl">TS Torque</div>    <div id="tsTorque"     class="drv-val">—</div><div class="drv-unit">digit</div></div>
+      <div class="drv-card"><div class="drv-lbl">TS Cadence</div>   <div id="tsCadence"    class="drv-val">—</div><div class="drv-unit">digit</div></div>
+      <div class="drv-card"><div class="drv-lbl">TS Motor Spd</div> <div id="tsMotorSpeed" class="drv-val">—</div><div class="drv-unit">digit</div></div>
+      <div class="drv-card"><div class="drv-lbl">TS Gear</div>      <div id="tsGear"       class="drv-val">—</div><div class="drv-unit">digit</div></div>
+      <div class="drv-card"><div class="drv-lbl">TS Pedal</div>     <div id="tsPedalWake"  class="drv-val">—</div><div class="drv-unit">bit</div></div>
+      <div class="drv-card"><div class="drv-lbl">TS Checksum</div>  <div id="tsChecksum"   class="drv-val">—</div><div class="drv-unit">hex</div></div>
+    </div>
+  </div>
+
   <!-- Register bit displays -->
   <div class="drv-registers">
 
@@ -311,6 +337,7 @@
         <div class="param-row">
           <button id="btnParamBatchRead"  class="btn btn-primary">全部讀取</button>
           <button id="btnParamBatchWrite" class="btn btn-action">全部寫入</button>
+          <button id="btnParamBatchStop"  class="btn btn-danger" disabled>■ 停止</button>
           <button id="btnParamBatchSave"  class="btn">儲存結果</button>
           <span id="paramBatchStat" class="param-note"></span>
         </div>
