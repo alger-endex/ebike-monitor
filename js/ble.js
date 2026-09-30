@@ -10,12 +10,23 @@
  *   5. write() 直接寫入 write characteristic
  */
 
+// 16-bit UUID 一律展開成完整 128-bit 字串：Chrome 兩種寫法都吃，
+// 但 iOS 的 Bluefy 等第三方實作不一定接受數字型 UUID
+const uuid16 = (n) => '0000' + n.toString(16).padStart(4, '0') + '-0000-1000-8000-00805f9b34fb';
+
+// 錯誤加上步驟名稱與 e.name，Bluefy 的錯誤訊息可能只有一個數字代碼
+function bleStepError(step, e) {
+  const name = (e && e.name) || 'Error';
+  const msg  = (e && e.message) || String(e);
+  return new Error(step + ' 失敗：' + name + ' — ' + msg);
+}
+
 const BLE_UART_PROFILES = [
   {
     name:   'ESP_GATTS',
-    svc:    0x00ff,
-    write:  0xff01,
-    notify: 0xff01,
+    svc:    uuid16(0x00ff),
+    write:  uuid16(0xff01),
+    notify: uuid16(0xff01),
     cfg:    null,
   },
   {
@@ -27,25 +38,25 @@ const BLE_UART_PROFILES = [
   },
   {
     name:   'HM10',
-    svc:    0xffe0,
-    write:  0xffe1,
-    notify: 0xffe1,
+    svc:    uuid16(0xffe0),
+    write:  uuid16(0xffe1),
+    notify: uuid16(0xffe1),
     cfg:    null,
   },
   {
     name:   'SPP',
-    svc:    0xabf0,
-    write:  0xabf1,
-    notify: 0xabf2,
+    svc:    uuid16(0xabf0),
+    write:  uuid16(0xabf1),
+    notify: uuid16(0xabf2),
     cfg:    null,
   },
 ];
 
 const BLE_OPTIONAL_SERVICES = [
-  0x00ff,
+  uuid16(0x00ff),
   '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
-  0xffe0, 0xffe1,
-  0xabf0,
+  uuid16(0xffe0), uuid16(0xffe1),
+  uuid16(0xabf0),
 ];
 
 class BleManager {
@@ -79,7 +90,7 @@ class BleManager {
       throw new Error('Web Bluetooth 需要 HTTPS 或 localhost 環境');
     }
     if (!navigator.bluetooth) {
-      throw new Error('此瀏覽器不支援 Web Bluetooth API\n請使用 Chrome / Edge 並以 HTTPS 或 localhost 開啟');
+      throw new Error('此瀏覽器不支援 Web Bluetooth API\n請使用 Chrome / Edge（iOS 請用 Bluefy）並以 HTTPS 或 localhost 開啟');
     }
 
     try {
@@ -89,7 +100,7 @@ class BleManager {
       });
     } catch (e) {
       if (e.name === 'NotFoundError') throw new Error('BLE 掃描已取消（未選擇裝置）');
-      throw e;
+      throw bleStepError('掃描裝置 (requestDevice)', e);
     }
 
     this._device.addEventListener('gattserverdisconnected', () => {
@@ -102,7 +113,7 @@ class BleManager {
       this._server = await this._device.gatt.connect();
     } catch (e) {
       this._device = null;
-      throw new Error('GATT 連線失敗：' + e.message);
+      throw bleStepError('GATT 連線 (gatt.connect)', e);
     }
 
     const found = await this._findUartChars();
@@ -113,12 +124,14 @@ class BleManager {
 
     try {
       await this._notifChar.startNotifications();
-    } catch {
+    } catch (e) {
       await this.close();
-      throw new Error('無法訂閱 Notification，請重試');
+      throw bleStepError('訂閱 Notification (startNotifications)', e);
     }
     this._notifChar.addEventListener('characteristicvaluechanged', (e) => {
-      const bytes = new Uint8Array(e.target.value.buffer);
+      // 依 DataView 的 offset/length 取值，不假設它涵蓋整個 buffer
+      const v = e.target.value;
+      const bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
       for (const b of bytes) this._rxBuf.push(b);
       this._dispatchFrames();
     });
@@ -130,8 +143,19 @@ class BleManager {
       cfg[2] = (baudRate >>  8) & 0xFF;
       cfg[3] = (baudRate >> 16) & 0xFF;
       cfg[4] = (baudRate >> 24) & 0xFF;
-      await this._cfgChar.writeValueWithoutResponse(cfg);
+      try {
+        await this._writeNoResp(this._cfgChar, cfg);
+      } catch (e) {
+        throw bleStepError('設定 Baud Rate (cfg write)', e);
+      }
     }
+  }
+
+  // 較舊或第三方實作（如 Bluefy）可能沒有 writeValueWithoutResponse，退回 writeValue
+  _writeNoResp(char, bytes) {
+    return typeof char.writeValueWithoutResponse === 'function'
+      ? char.writeValueWithoutResponse(bytes)
+      : char.writeValue(bytes);
   }
 
   async _findUartChars() {
@@ -207,7 +231,7 @@ class BleManager {
   async write(data) {
     if (!this.isOpen) throw new Error('BLE 未連線');
     const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-    await this._writeChar.writeValueWithoutResponse(bytes);
+    await this._writeNoResp(this._writeChar, bytes);
   }
 
   clearBuffer() { this._rxBuf.length = 0; }
