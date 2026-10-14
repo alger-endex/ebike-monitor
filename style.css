@@ -92,6 +92,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .btn-primary { background: #1565c0; border-color: #1e88e5; }
 .btn-action  { background: #1b5e20; border-color: #43a047; }
 .btn-danger  { background: #b71c1c; border-color: #e53935; }
+.btn-warn    { background: #8a5a00; border-color: #f59e0b; } /* 會改動裝置或刪資料的操作，按下前會確認 */
 
 /* ── Status dot & BLE info ────────────────────────────────────── */
 
@@ -140,6 +141,15 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
   cursor: pointer;
   accent-color: var(--cyan);
   vertical-align: middle;
+}
+
+/* 標籤＋數值（＋↺）綁成一組，換行時整組一起移動，不會把「最短：」和「— ms」拆到兩行 */
+.stat-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .mv-counter {

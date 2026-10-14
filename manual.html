@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.5.0</span>
-      <span class="pill cyan">手冊版本 v2.5（見第 14 節）</span>
+      <span class="pill cyan">手冊版本 v2.6（見第 14 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -607,7 +607,7 @@
           <table class="spec-table">
             <thead><tr><th>控制項</th><th>行為</th></tr></thead>
             <tbody>
-              <tr><td class="key">▾ / ▸ 功能鍵</td><td class="val" style="white-space:normal">收合／展開下方 StartCmd 參數列與 Tick 項目列，畫面空間有限時可先收起</td></tr>
+              <tr><td class="key">▾ / ▸ 功能鍵</td><td class="val" style="white-space:normal">收合／展開下方 StartCmd 參數列與 Tick 項目列，畫面空間有限時可先收起。手機（寬度 ≤768px）開啟頁面時預設為收合，讓第一屏直接看到資料卡片，需要時再按「▸ 功能鍵」展開</td></tr>
               <tr><td class="key">助行</td><td class="val" style="white-space:normal">勾選即在 StartCmd 的 D1 送出 <code>0xA5</code>（Push Assist 開），取消則送 <code>0x00</code></td></tr>
               <tr><td class="key">▶ 強制啟動</td><td class="val" style="white-space:normal">模擬上表持續送出 StartCmd，開啟／停止 Driver Status 監控迴圈（1000ms 週期，依 Tick 項目勾選送出對應請求），不需接上表即可讓控制器開機運轉</td></tr>
               <tr><td class="key">⏺ 開始記錄</td><td class="val" style="white-space:normal">切換韌體進入／退出記錄模式（詳見第 10 節），與 CAN 輪詢互斥</td></tr>
@@ -671,7 +671,8 @@
           10 筆），可用來粗估控制器實際回覆頻率或發現丟包。</p>
 
         <h3>記錄批次計數</h3>
-        <p>記錄模式開啟後，「車輛」「馬達」兩顆計數器分別累加已收到的批次數；旁邊的
+        <p>記錄模式開啟後，「車輛」「馬達」兩顆計數器分別累加已收到的批次數。
+          <span class="btn-preview">清除記錄</span> 會把計數器歸零並<b>清空記憶體中尚未匯出的記錄樣本</b>，有資料時會先跳出確認視窗。旁邊的
           <span class="btn-preview">匯出車輛 CSV</span> / <span class="btn-preview">匯出馬達 CSV</span>
           可隨時手動匯出目前緩衝，「自動儲存」勾選框與間隔設定見第 10 節。</p>
       </section>
@@ -718,7 +719,7 @@
           暫存器，韌體的批次協定本身就沒有回傳這些欄位，記錄期間會停在「記錄前最後一次 CAN 值」不再變動——這是協定的結構性缺口，不是程式漏接，比對表（第 10 節）也刻意不列這幾項。
         </div>
         <div class="callout" style="margin-top:14px">
-          <strong>力矩感測器（TS）卡片：</strong> 集中在主卡片區下方的「Torque Sensor · 0x18F50133」獨立區塊。區塊上方的統計列顯示接收筆數與間隔（最近一次／平均／最短／最長，按 ↺ 歸零），可用來量測感測器的廣播週期。統計列右側的「■ 靜默 (F0)」「▶ 恢復 (F1)」會送出總線命令 CAN ID <code>0x08F20020</code>（D0 = <code>0xF0</code> 總線靜默，要求感測器停止廣播；<code>0xF1</code> 總線恢復正常；D1~D7 保留填 0），按下後可從 RX 筆數是否停止增加判斷命令是否生效。多筆 CAN 封包可能擠在同一個 BLE 通知裡一起到達，這時間隔會接近 0 ms，量到的是手機端的接收間隔，不一定等於 CAN bus 上的真實週期。由感測器主動廣播 CAN ID <code>0x18F50133</code>，不需勾選任何 Tick 項目；只接受 D0 起始位為 <code>0xFF</code> 的封包。
+          <strong>力矩感測器（TS）卡片：</strong> 集中在主卡片區下方的「Torque Sensor · 0x18F50133」獨立區塊。區塊上方的統計列顯示接收筆數與間隔（最近一次／平均／最短／最長，按 ↺ 歸零），可用來量測感測器的廣播週期。統計列右側的「■ 靜默 (F0)」「▶ 恢復 (F1)」會送出總線命令 CAN ID <code>0x08F20020</code>（D0 = <code>0xF0</code> 總線靜默，要求感測器停止廣播，按下前會跳出確認視窗；<code>0xF1</code> 總線恢復正常；D1~D7 保留填 0），按下後可從 RX 筆數是否停止增加判斷命令是否生效。多筆 CAN 封包可能擠在同一個 BLE 通知裡一起到達，這時間隔會接近 0 ms，量到的是手機端的接收間隔，不一定等於 CAN bus 上的真實週期。由感測器主動廣播 CAN ID <code>0x18F50133</code>，不需勾選任何 Tick 項目；只接受 D0 起始位為 <code>0xFF</code> 的封包。
           記錄模式期間控制器不轉送逐筆 CAN 封包，這幾張卡片會停在最後一次的值。
         </div>
       </section>
@@ -842,6 +843,7 @@
               <tr><td class="key">匯出車輛/馬達 CSV</td><td class="val" style="white-space:normal">手動將目前緩衝的記錄下載為 CSV，緩衝不會因此清空</td></tr>
               <tr><td class="key">自動儲存</td><td class="val" style="white-space:normal">勾選後每 30 秒檢查一次，達到設定間隔（預設 15 分）就自動匯出並清空緩衝、段號遞增，避免長時間錄製時記憶體無限增長</td></tr>
               <tr><td class="key">間隔（分）</td><td class="val" style="white-space:normal">自動儲存的輪替週期，1~120 分鐘</td></tr>
+              <tr><td class="key">離開頁面提醒</td><td class="val" style="white-space:normal">記憶體裡還有尚未匯出的記錄時，關閉分頁、重新整理或離開頁面，瀏覽器會先跳出「確定要離開？」提示，避免錄好的資料直接消失</td></tr>
             </tbody>
           </table>
         </div>
@@ -862,7 +864,7 @@
         <ol>
           <li>選擇功能：<b>讀取 0x03</b> 或 <b>寫入 0x06</b>（選讀取時「數據」欄停用）。</li>
           <li>輸入 1~4 位 hex 位址（寫入時再輸入 1~4 位 hex 數據），不需加 <code>0x</code>。格式錯誤會直接提示，不會送出。</li>
-          <li>按 <span class="btn-preview">發送</span>，回應框顯示結果：成功為 <code>0xVVVV (十進位)</code>，
+          <li>按 <span class="btn-preview">發送</span>（選寫入時會先跳出確認視窗，列出位址與數據），回應框顯示結果：成功為 <code>0xVVVV (十進位)</code>，
             錯誤回應顯示 <code>ERR(0xCC)</code>（CC 為控制器回傳的錯誤碼），送出後 300ms 內完全沒收到任何封包，或雖然有收到但都不是這一筆的回應、且從送出起算已超過 1 秒（或累積略過 20 筆不符的封包），就算這次沒有回應並自動重試，連續 3 次都沒有回應則顯示 <code>TIMEOUT</code>。</li>
         </ol>
 
@@ -889,7 +891,7 @@
             <thead><tr><th>按鈕</th><th>行為</th></tr></thead>
             <tbody>
               <tr><td class="key">全部讀取</td><td class="val" style="white-space:normal">逐筆讀取檔案中每個位址的目前數值，填入「讀取結果」欄；讀完若包含 0x0000~0x0003，同時更新裝置 SIG</td></tr>
-              <tr><td class="key">全部寫入</td><td class="val" style="white-space:normal">先讀取裝置 SIG 與檔案 SIG 比對，<b>不符就整批中止</b>；相符才逐筆寫入。位址 ≤ <code>0x0020</code>（SIG 與表頭區）一律標示 SKIP 不寫入</td></tr>
+              <tr><td class="key">全部寫入</td><td class="val" style="white-space:normal">先讀取裝置 SIG 與檔案 SIG 比對，<b>不符就整批中止</b>；相符後會跳出確認視窗，列出將寫入與略過的筆數，按確定才逐筆寫入（取消則不寫入任何參數）。位址 ≤ <code>0x0020</code>（SIG 與表頭區）一律標示 SKIP 不寫入</td></tr>
               <tr><td class="key">■ 停止</td><td class="val" style="white-space:normal">只在全部讀取／全部寫入進行中可按。立刻中斷目前這一筆的等待並結束批次，已完成的列保留結果，狀態列顯示「已停止（完成筆數/總筆數）」。寫入時若在 SIG 比對階段停止，不會寫入任何參數</td></tr>
               <tr><td class="key">儲存結果</td><td class="val" style="white-space:normal">以同樣格式輸出「位址＋讀取到的裝置數值」，檔名預設為「原檔名_result.txt」，可在檔名欄修改</td></tr>
             </tbody>
@@ -1050,6 +1052,19 @@
         <div class="sec-hd"><span class="sec-num">14</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v2.6</span><span class="change-date">2026-10-14</span></div>
+            <div class="change-body">
+              <h4>危險操作確認、手機預設收合功能鍵面板</h4>
+              <ul>
+                <li>會改動裝置或刪除資料的操作改用琥珀色按鈕，按下前會跳出確認視窗：單筆寫入 0x06、全部寫入（SIG 相符後列出寫入／略過筆數）（第 11 節）、力矩感測器總線靜默 (F0)（第 7 節）。</li>
+                <li>記錄批次旁原本的「↺」改名為「清除記錄」，跟其他只歸零計數器的 ↺ 區分開；有未匯出的樣本時會先確認（第 6 節）。</li>
+                <li>記憶體裡還有未匯出的記錄時，關閉或重新整理頁面會先跳出瀏覽器的離開提示（第 10 節）。</li>
+                <li>手機（≤768px）開啟時功能鍵面板預設收合（第 4 節）。</li>
+                <li>Tick 列與 TS 統計列換行時，「標籤＋數值（＋↺）」會整組一起移動，不再出現「最短：」和「— ms」被拆到兩行的情況。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v2.5</span><span class="change-date">2026-09-30</span></div>
             <div class="change-body">

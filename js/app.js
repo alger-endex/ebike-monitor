@@ -426,6 +426,8 @@ function drvUpdateRecordingMotor(s) {
 }
 
 document.getElementById('btnRecReset').addEventListener('click', () => {
+  const n = recVehicleLog.length + recMotorLog.length;
+  if (n && !confirm('將清除尚未匯出的 ' + n + ' 筆記錄樣本，清除後無法復原。\n確定要清除嗎？')) return;
   recVehicleBatchCount = 0; recMotorBatchCount = 0;
   recVehicleLog = []; recMotorLog = [];
   document.getElementById('recVehicleBatchCount').textContent = '車輛: 0';
@@ -602,7 +604,10 @@ async function tsSendBusCmd(cmd, label) {
     log('❌ 力矩感測器總線命令失敗：' + (e.message || e));
   }
 }
-document.getElementById('btnTsBusSilent').addEventListener('click', () => tsSendBusCmd(TS_BUS_SILENT, '總線靜默'));
+document.getElementById('btnTsBusSilent').addEventListener('click', () => {
+  if (!confirm('送出總線靜默後，力矩感測器會停止在 CAN bus 上廣播，直到按「恢復 (F1)」為止。\n確定要送出嗎？')) return;
+  tsSendBusCmd(TS_BUS_SILENT, '總線靜默');
+});
 document.getElementById('btnTsBusResume').addEventListener('click', () => tsSendBusCmd(TS_BUS_RESUME, '總線恢復'));
 
 // 力矩 10-bit = D4 高 2 位 + D2；馬達轉速 14-bit = D4 低 6 位 + D5
@@ -861,12 +866,13 @@ function renderBatteryFaultBits(containerId, regVal) {
 
 // ── Params panel toggle (StartCmd + Tick bar) ──────────────────
 
+function setParamsPanelVisible(visible) {
+  document.getElementById('paramsPanel').style.display = visible ? '' : 'none';
+  document.getElementById('btnToggleParams').textContent = visible ? '▾ 功能鍵' : '▸ 功能鍵';
+}
+
 document.getElementById('btnToggleParams').addEventListener('click', () => {
-  const panel  = document.getElementById('paramsPanel');
-  const btn    = document.getElementById('btnToggleParams');
-  const hidden = panel.style.display === 'none';
-  panel.style.display = hidden ? '' : 'none';
-  btn.textContent = hidden ? '▾ 功能鍵' : '▸ 功能鍵';
+  setParamsPanelVisible(document.getElementById('paramsPanel').style.display === 'none');
 });
 
 // ── Page tabs（即時監控 / 參數讀寫） ────────────────────────────
@@ -879,7 +885,17 @@ document.querySelectorAll('.page-tab').forEach(tab => {
   });
 });
 
+// ── 離開頁面前提醒：還有沒匯出的記錄 ──────────────────────────
+
+window.addEventListener('beforeunload', (e) => {
+  if (!recVehicleLog.length && !recMotorLog.length) return;
+  e.preventDefault();
+  e.returnValue = ''; // 舊版 Chrome 需要設定 returnValue 才會跳出提示
+});
+
 // ── Init ───────────────────────────────────────────────────────
 
 document.getElementById('appVersion').textContent = APP_VERSION;
 updateCmdPreview();
+// 手機上功能鍵面板展開會佔掉整個第一屏，預設收合（斷點同 style.css）
+if (window.matchMedia('(max-width: 768px)').matches) setParamsPanelVisible(false);

@@ -120,31 +120,36 @@
     <span id="mvIntervalVal" class="drv-log-count">50 ms</span>
   </label>
   <button id="btnMotorVectorMonitor" class="btn btn-action">▶ 向量監控</button>
-  <span id="mvTxCount" class="mv-counter">TX: 0</span>
-  <span id="mvRxCount" class="mv-counter">RX: 0</span>
-  <button id="btnMvCountReset" class="btn">↺</button>
+  <span class="stat-group">
+    <span id="mvTxCount" class="mv-counter">TX: 0</span>
+    <span id="mvRxCount" class="mv-counter">RX: 0</span>
+    <button id="btnMvCountReset" class="btn">↺</button>
+  </span>
   <div class="sep"></div>
-  <span class="tick-lbl">All RX：</span>
-  <span id="rxTotalCount" class="mv-counter">0</span>
-  <span class="tick-lbl">間隔：</span>
-  <span id="rxInterval" class="mv-counter">— ms</span>
-  <span class="tick-lbl">最短：</span>
-  <span id="rxMinInterval" class="mv-counter">— ms</span>
-  <button id="btnRxTotalReset" class="btn">↺</button>
+  <span class="stat-group"><span class="tick-lbl">All RX：</span><span id="rxTotalCount" class="mv-counter">0</span></span>
+  <span class="stat-group"><span class="tick-lbl">間隔：</span><span id="rxInterval" class="mv-counter">— ms</span></span>
+  <span class="stat-group">
+    <span class="tick-lbl">最短：</span><span id="rxMinInterval" class="mv-counter">— ms</span>
+    <button id="btnRxTotalReset" class="btn">↺</button>
+  </span>
   <div class="sep"></div>
-  <span class="tick-lbl">記錄批次：</span>
-  <span id="recVehicleBatchCount" class="mv-counter">車輛: 0</span>
-  <span id="recMotorBatchCount"   class="mv-counter">馬達: 0</span>
-  <button id="btnRecReset" class="btn">↺</button>
+  <span class="stat-group">
+    <span class="tick-lbl">記錄批次：</span>
+    <span id="recVehicleBatchCount" class="mv-counter">車輛: 0</span>
+    <span id="recMotorBatchCount"   class="mv-counter">馬達: 0</span>
+  </span>
+  <button id="btnRecReset" class="btn btn-warn">清除記錄</button>
   <button id="btnExportRecVehicleCsv" class="btn">匯出車輛 CSV</button>
   <button id="btnExportRecMotorCsv"   class="btn">匯出馬達 CSV</button>
   <button id="btnBatteryInfo" class="btn">🔋 電池資訊</button>
   <div class="sep"></div>
-  <label class="chk-label"><input type="checkbox" id="chkRecAutoSave" checked><span>自動儲存</span></label>
-  <label class="chk-label"><span>間隔</span>
-    <input type="number" id="recAutoSaveInterval" min="1" max="120" value="15" class="cmd-num">
-    <span>分</span>
-  </label>
+  <span class="stat-group">
+    <label class="chk-label"><input type="checkbox" id="chkRecAutoSave" checked><span>自動儲存</span></label>
+    <label class="chk-label"><span>間隔</span>
+      <input type="number" id="recAutoSaveInterval" min="1" max="120" value="15" class="cmd-num">
+      <span>分</span>
+    </label>
+  </span>
 </nav>
 </div><!-- #paramsPanel -->
 
@@ -180,15 +185,17 @@
   <div class="drv-reg-box ts-group">
     <div class="drv-reg-title">Torque Sensor · 0x18F50133</div>
     <div class="ts-stats">
-      <span class="tick-lbl">RX：</span>  <span id="tsRxCount"     class="mv-counter">0</span>
-      <span class="tick-lbl">間隔：</span><span id="tsIntervalLast" class="mv-counter">— ms</span>
-      <span class="tick-lbl">平均：</span><span id="tsIntervalAvg"  class="mv-counter">— ms</span>
-      <span class="tick-lbl">最短：</span><span id="tsIntervalMin"  class="mv-counter">— ms</span>
-      <span class="tick-lbl">最長：</span><span id="tsIntervalMax"  class="mv-counter">— ms</span>
-      <button id="btnTsStatsReset" class="btn">↺</button>
+      <span class="stat-group"><span class="tick-lbl">RX：</span>  <span id="tsRxCount"     class="mv-counter">0</span></span>
+      <span class="stat-group"><span class="tick-lbl">間隔：</span><span id="tsIntervalLast" class="mv-counter">— ms</span></span>
+      <span class="stat-group"><span class="tick-lbl">平均：</span><span id="tsIntervalAvg"  class="mv-counter">— ms</span></span>
+      <span class="stat-group"><span class="tick-lbl">最短：</span><span id="tsIntervalMin"  class="mv-counter">— ms</span></span>
+      <span class="stat-group">
+        <span class="tick-lbl">最長：</span><span id="tsIntervalMax"  class="mv-counter">— ms</span>
+        <button id="btnTsStatsReset" class="btn">↺</button>
+      </span>
       <div class="sep"></div>
       <span class="tick-lbl">總線命令 0x08F20020：</span>
-      <button id="btnTsBusSilent" class="btn">■ 靜默 (F0)</button>
+      <button id="btnTsBusSilent" class="btn btn-warn">■ 靜默 (F0)</button>
       <button id="btnTsBusResume" class="btn">▶ 恢復 (F1)</button>
     </div>
     <div class="drv-metrics">
@@ -336,7 +343,7 @@
       <div id="paramBatchCtrls" style="display:none">
         <div class="param-row">
           <button id="btnParamBatchRead"  class="btn btn-primary">全部讀取</button>
-          <button id="btnParamBatchWrite" class="btn btn-action">全部寫入</button>
+          <button id="btnParamBatchWrite" class="btn btn-warn">全部寫入</button>
           <button id="btnParamBatchStop"  class="btn btn-danger" disabled>■ 停止</button>
           <button id="btnParamBatchSave"  class="btn">儲存結果</button>
           <span id="paramBatchStat" class="param-note"></span>

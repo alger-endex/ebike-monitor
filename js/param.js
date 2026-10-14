@@ -199,6 +199,8 @@ document.getElementById('btnParamSend').addEventListener('click', async () => {
   const data = fc === PARAM_FC_WRITE ? parseHex16('paramData') : 0;
   if (addr === null) { respEl.textContent = '位址格式錯誤（1~4 位 hex）'; return; }
   if (data === null) { respEl.textContent = '數據格式錯誤（1~4 位 hex）'; return; }
+  if (fc === PARAM_FC_WRITE &&
+      !confirm('將寫入控制器參數：位址 0x' + hex4(addr) + ' ← 0x' + hex4(data) + '\n確定要寫入嗎？')) return;
 
   paramSetBusy(true);
   respEl.textContent = '等待回應…';
@@ -372,6 +374,13 @@ document.getElementById('btnParamBatchWrite').addEventListener('click', async ()
   document.getElementById('paramSigDevice').textContent = devSig || 'ERR';
   if (devSig !== fileSig) {
     statEl.textContent = '⚠ SIG 不符，寫入中止。檔案「' + fileSig + '」 裝置「' + (devSig || 'ERR') + '」';
+    paramSetBusy(false);
+    return;
+  }
+  const writable = paramBatch.filter(p => p.addr > PARAM_WRITE_PROTECT).length;
+  if (!confirm('SIG 相符（' + devSig + '）。\n將寫入 ' + writable + ' 筆參數，略過 ' + (paramBatch.length - writable) +
+               ' 筆（位址 ≤ 0x' + hex4(PARAM_WRITE_PROTECT) + '）。\n確定要寫入嗎？')) {
+    statEl.textContent = '已取消寫入（SIG 相符，未寫入任何參數）';
     paramSetBusy(false);
     return;
   }
