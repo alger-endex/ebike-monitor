@@ -3,7 +3,7 @@
  * BLE/CAN 即時監控：Driver Status + SetBit 位元檢視
  */
 
-const APP_VERSION = 'v1.5.1';
+const APP_VERSION = 'v1.6.0';
 
 // ── State ──────────────────────────────────────────────────────
 

@@ -448,8 +448,8 @@
     <p class="subtitle">透過 BLE↔CAN 橋接連線電動輔助自行車控制器，即時監控 Driver / Motor / Battery
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
-      <span class="pill accent">程式版本 v1.5.1</span>
-      <span class="pill cyan">手冊版本 v3.0（見第 14 節）</span>
+      <span class="pill accent">程式版本 v1.6.0</span>
+      <span class="pill cyan">手冊版本 v3.1（見第 14 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -1090,6 +1090,16 @@
         <div class="sec-hd"><span class="sec-num">14</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v3.1</span><span class="change-date">2026-11-02</span></div>
+            <div class="change-body">
+              <h4>程式版本進至 v1.6.0</h4>
+              <ul>
+                <li>v2.8～v3.0 記錄的自動儲存多檔下載提醒、Motor Torque Sensor 區塊改名與 MTS 記錄模式正式進版，頁首徽章同步更新為程式版本 v1.6.0。</li>
+                <li>MTS 記錄需搭配 ESP32 橋接韌體 v1.0.5 以上；舊韌體收到 mode <code>0x02</code> 會當成關閉記錄。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v3.0</span><span class="change-date">2026-11-02</span></div>
             <div class="change-body">
