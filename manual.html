@@ -449,7 +449,7 @@
       狀態、檢視暫存器位元，並可切換高頻批次記錄模式採集資料。本手冊對應目前介面版本，依實際操作順序編排。</p>
     <div class="meta-row">
       <span class="pill accent">程式版本 v1.5.1</span>
-      <span class="pill cyan">手冊版本 v2.7（見第 14 節）</span>
+      <span class="pill cyan">手冊版本 v3.0（見第 14 節）</span>
       <span class="pill">單頁 Vanilla JS，無需建置</span>
       <span class="pill">需 HTTPS 或 localhost</span>
       <span class="pill">Chrome / Edge</span>
@@ -610,7 +610,8 @@
               <tr><td class="key">▾ / ▸ 功能鍵</td><td class="val" style="white-space:normal">收合／展開下方 StartCmd 參數列與 Tick 項目列，畫面空間有限時可先收起。手機（寬度 ≤768px）開啟頁面時預設為收合，讓第一屏直接看到資料卡片，需要時再按「▸ 功能鍵」展開</td></tr>
               <tr><td class="key">助行</td><td class="val" style="white-space:normal">勾選即在 StartCmd 的 D1 送出 <code>0xA5</code>（Push Assist 開），取消則送 <code>0x00</code></td></tr>
               <tr><td class="key">▶ 強制啟動</td><td class="val" style="white-space:normal">模擬上表持續送出 StartCmd，開啟／停止 Driver Status 監控迴圈（1000ms 週期，依 Tick 項目勾選送出對應請求），不需接上表即可讓控制器開機運轉</td></tr>
-              <tr><td class="key">⏺ 開始記錄</td><td class="val" style="white-space:normal">切換韌體進入／退出記錄模式（詳見第 10 節），與 CAN 輪詢互斥</td></tr>
+              <tr><td class="key">記錄模式選單</td><td class="val" style="white-space:normal">按「開始記錄」前選擇要錄哪一種：「一般記錄」（車輛狀態＋馬達 Id/Iq）或「MTS記錄」（MTS = Motor Torque Sensor，只錄力矩感測器廣播）。兩者互斥，記錄期間選單鎖定，要換模式請先停止記錄（詳見第 10 節）</td></tr>
+              <tr><td class="key">⏺ 開始記錄</td><td class="val" style="white-space:normal">依左側選單的模式切換韌體進入／退出記錄模式（詳見第 10 節），與 CAN 輪詢互斥</td></tr>
               <tr><td class="key">即時監控／參數讀寫 頁籤</td><td class="val" style="white-space:normal">連線列下方的頁籤切換主畫面：「即時監控」是資料卡片與暫存器，「參數讀寫」是單筆／批次參數讀寫（詳見第 11 節）。切換頁籤不會中斷連線或停止背景的監控迴圈，功能鍵面板兩頁共用</td></tr>
               <tr><td class="key">📖 操作說明書</td><td class="val" style="white-space:normal">開啟隨專案附帶的 <code>manual.html</code>（新分頁），不需連線、不需帳號即可使用</td></tr>
             </tbody>
@@ -671,9 +672,9 @@
           10 筆），可用來粗估控制器實際回覆頻率或發現丟包。</p>
 
         <h3>記錄批次計數</h3>
-        <p>記錄模式開啟後，「車輛」「馬達」兩顆計數器分別累加已收到的批次數。
+        <p>記錄模式開啟後，「車輛」「馬達」「力矩」三顆計數器分別累加已收到的批次數（一般記錄只會動車輛、馬達；MTS記錄只會動力矩）。
           <span class="btn-preview">清除記錄</span> 會把計數器歸零並<b>清空記憶體中尚未匯出的記錄樣本</b>，有資料時會先跳出確認視窗。旁邊的
-          <span class="btn-preview">匯出車輛 CSV</span> / <span class="btn-preview">匯出馬達 CSV</span>
+          <span class="btn-preview">匯出CSV Ebike</span>（車輛狀態）/ <span class="btn-preview">匯出CSV IdIq</span>（馬達 Id/Iq）/ <span class="btn-preview">匯出CSV MTS</span>（力矩感測器）
           可隨時手動匯出目前緩衝，「自動儲存」勾選框與間隔設定見第 10 節。</p>
       </section>
 
@@ -719,8 +720,8 @@
           暫存器，韌體的批次協定本身就沒有回傳這些欄位，記錄期間會停在「記錄前最後一次 CAN 值」不再變動——這是協定的結構性缺口，不是程式漏接，比對表（第 10 節）也刻意不列這幾項。
         </div>
         <div class="callout" style="margin-top:14px">
-          <strong>力矩感測器（TS）卡片：</strong> 集中在主卡片區下方的「Torque Sensor · 0x18F50133」獨立區塊。區塊上方的統計列顯示接收筆數與間隔（最近一次／平均／最短／最長，按 ↺ 歸零），可用來量測感測器的廣播週期。統計列右側的「■ 靜默 (F0)」「▶ 恢復 (F1)」會送出總線命令 CAN ID <code>0x08F20020</code>（D0 = <code>0xF0</code> 總線靜默，要求感測器停止廣播，按下前會跳出確認視窗；<code>0xF1</code> 總線恢復正常；D1~D7 保留填 0），按下後可從 RX 筆數是否停止增加判斷命令是否生效。多筆 CAN 封包可能擠在同一個 BLE 通知裡一起到達，這時間隔會接近 0 ms，量到的是手機端的接收間隔，不一定等於 CAN bus 上的真實週期。由感測器主動廣播 CAN ID <code>0x18F50133</code>，不需勾選任何 Tick 項目；只接受 D0 起始位為 <code>0xFF</code> 的封包。
-          記錄模式期間控制器不轉送逐筆 CAN 封包，這幾張卡片會停在最後一次的值。
+          <strong>力矩感測器（TS）卡片：</strong> 集中在主卡片區下方的「Motor Torque Sensor · 0x18F50133」獨立區塊。區塊上方的統計列顯示接收筆數與間隔（最近一次／平均／最短／最長，按 ↺ 歸零），可用來量測感測器的廣播週期。統計列右側的「■ 靜默 (F0)」「▶ 恢復 (F1)」會送出總線命令 CAN ID <code>0x08F20020</code>（D0 = <code>0xF0</code> 總線靜默，要求感測器停止廣播，按下前會跳出確認視窗；<code>0xF1</code> 總線恢復正常；D1~D7 保留填 0），按下後可從 RX 筆數是否停止增加判斷命令是否生效。多筆 CAN 封包可能擠在同一個 BLE 通知裡一起到達，這時間隔會接近 0 ms，量到的是手機端的接收間隔，不一定等於 CAN bus 上的真實週期。由感測器主動廣播 CAN ID <code>0x18F50133</code>，不需勾選任何 Tick 項目；只接受 D0 起始位為 <code>0xFF</code> 的封包。
+          一般記錄期間控制器不轉送逐筆 CAN 封包，這幾張卡片會停在最後一次的值；改用「MTS記錄」時，卡片會跟著記錄批次更新（TS Checksum 除外，批次裡沒有這個欄位），上方 RX 筆數也會依收到的樣本數累加；間隔／平均／最短／最長則停止更新，因為批次是 24 筆一起送達，量不出感測器的廣播週期。
         </div>
       </section>
 
@@ -818,30 +819,52 @@
         <p class="sec-desc">記錄模式讓控制器切換成高頻批次輸出，取樣密度遠高於逐筆 CAN 輪詢，適合做波形分析、
           事件重現。開啟時會自動停止 CAN 輪詢與向量監控，因為兩種格式互斥、無法同時解析。</p>
 
+        <h3>兩種記錄模式</h3>
+        <div class="grid2">
+          <div class="feat">
+            <h4><span class="tag">一般記錄</span></h4>
+            <p>韌體送出車輛狀態批次（約每 600ms，每批 6 筆）與馬達 Id/Iq 批次（約每 480ms，每批 24 筆，韌體每 20ms 輪詢一次馬達向量）。
+              更新資料卡片、暫存器與電池資訊。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="tag">MTS記錄</span></h4>
+            <p>韌體只轉送 Motor Torque Sensor 主動廣播 <code>0x18F50133</code>，每收到一筆通過檢查（D0 = <code>0xFF</code>、checksum 正確）的廣播就存一筆，
+              每 24 筆打包送出。取樣週期等於感測器自己的廣播週期。這個模式<b>不送</b>車輛、馬達批次，也不做馬達向量輪詢，所以只有 Motor Torque Sensor 卡片會更新。</p>
+          </div>
+        </div>
+        <p style="margin-top:14px">韌體同一時間只能跑一種記錄模式，所以模式要在開始前選好；記錄期間選單會鎖定。</p>
+
         <h3>開始 / 停止</h3>
         <ol>
+          <li>在 <span class="btn-preview">⏺ 開始記錄</span> 左側的選單選擇「一般記錄」或「MTS記錄」。</li>
           <li>按 <span class="btn-preview">⏺ 開始記錄</span>：立即凍結目前卡片數值作為「記錄前基準」，
-            送出開啟指令後切換解析格式，按鈕變為 <span class="btn-preview off">⏹ 停止記錄</span>。</li>
-          <li>「強制啟動」「向量監控」按鈕在記錄期間停用；記錄批次計數器（第 06 節）開始累加。</li>
+            送出開啟指令後切換解析格式，按鈕變為 <span class="btn-preview off">⏹ 停止記錄</span>，狀態記錄會寫出目前的模式。</li>
+          <li>「強制啟動」「向量監控」按鈕與模式選單在記錄期間停用；記錄批次計數器（第 06 節）開始累加。</li>
           <li>再按一次按鈕即送出關閉指令、切回 CAN 輪詢解析格式，按鈕與其餘功能鍵恢復可用。</li>
         </ol>
+        <div class="callout" style="margin-top:14px">
+          <strong>掉批偵測（MTS記錄）：</strong> 每筆樣本都帶有韌體的遞增 count（開始記錄後第一筆為 1）。
+          網頁發現 count 跳號時，會在狀態記錄寫出「⚠ MTS記錄 count 不連續：A → B（遺失 N 筆）」。
+          韌體的送出佇列滿了會整批丟棄，所以遺失筆數通常是 24 的倍數。
+        </div>
 
         <h3>Debug 面板</h3>
-        <p>主畫面下方兩個 Debug 方塊分別顯示「車輛狀態批次」與「馬達 Id/Iq 批次」最新收到的一筆原始
-          bytes（HEX）與解析後欄位，用來直接核對協定是否解析正確，不需要另外接封包擷取工具。</p>
+        <p>主畫面下方三個 Debug 方塊分別顯示「車輛狀態批次」「馬達 Id/Iq 批次」「Motor Torque Sensor 批次」最新收到的一筆原始
+          bytes（HEX）與第一筆樣本的解析欄位，用來直接核對協定是否解析正確，不需要另外接封包擷取工具。</p>
 
         <h3>記錄前 CAN 基準 vs 記錄中最新值</h3>
         <p>比對表把「進入記錄模式那一刻」凍結的 CAN 數值，跟記錄批次持續更新的最新值並排顯示，數值不同的列會標色，
           方便肉眼確認兩種資料來源是否一致。前述 Total Assist／Single Trip／Remain Dist
-          三個欄位協定裡沒有對應資料，因此刻意不列入比對表。</p>
+          三個欄位協定裡沒有對應資料，因此刻意不列入比對表。MTS記錄時，比對表改列 TS Temp／Torque／Cadence／Motor Spd／Gear／Pedal
+          六個欄位，不列車輛卡片與暫存器，因為這個模式不會更新它們。</p>
 
         <h3>CSV 匯出與自動儲存</h3>
         <div class="table-wrap">
           <table class="spec-table">
             <thead><tr><th>控制項</th><th>行為</th></tr></thead>
             <tbody>
-              <tr><td class="key">匯出車輛/馬達 CSV</td><td class="val" style="white-space:normal">手動將目前緩衝的記錄下載為 CSV，緩衝不會因此清空</td></tr>
-              <tr><td class="key">自動儲存</td><td class="val" style="white-space:normal">勾選後每 30 秒檢查一次，達到設定間隔（預設 15 分）就自動匯出並清空緩衝、段號遞增，避免長時間錄製時記憶體無限增長</td></tr>
+              <tr><td class="key">匯出CSV Ebike / IdIq / MTS</td><td class="val" style="white-space:normal">手動將目前緩衝的記錄下載為 CSV，緩衝不會因此清空</td></tr>
+              <tr><td class="key">自動儲存</td><td class="val" style="white-space:normal">勾選後每 30 秒檢查一次，達到設定間隔（預設 15 分）就自動匯出並清空緩衝、段號遞增，避免長時間錄製時記憶體無限增長。一般記錄每段會連續下載車輛、馬達 2 個檔案，<b>第一次使用時瀏覽器可能詢問「下載多個檔案」，請選「允許」</b>（見第 12 節）；MTS記錄每段只下載 1 個檔案</td></tr>
               <tr><td class="key">間隔（分）</td><td class="val" style="white-space:normal">自動儲存的輪替週期，1~120 分鐘</td></tr>
               <tr><td class="key">離開頁面提醒</td><td class="val" style="white-space:normal">記憶體裡還有尚未匯出的記錄時，關閉分頁、重新整理或離開頁面，瀏覽器會先跳出「確定要離開？」提示，避免錄好的資料直接消失</td></tr>
             </tbody>
@@ -850,7 +873,10 @@
         <div class="callout" style="margin-top:14px">
           匯出走瀏覽器原生下載（<code>&lt;a download&gt;</code>），實際存放路徑由瀏覽器「下載內容」設定決定
           ——多數情況會落在系統下載資料夾，若瀏覽器設定「每次下載詢問位置」則每次都會跳出存檔對話框。
-          檔名格式為 <code>vehicle_status_seg{段號}_{時間戳}.csv</code> / <code>motor_idiq_seg{段號}_{時間戳}.csv</code>。
+          檔名格式為 <code>Ebike_status_seg{段號}_{時間戳}.csv</code> / <code>motor_idiq_seg{段號}_{時間戳}.csv</code> /
+          <code>MTS_seg{段號}_{時間戳}.csv</code>。
+          力矩 CSV 欄位為 <code>count, torque, motorSpeed, tempC, cadence, gear, pedalWake</code>；
+          <code>tempC</code> 已換算成 °C（跟卡片一致），感測器回報無效溫度時該欄留空，其餘欄位為原始值。
         </div>
       </section>
 
@@ -961,6 +987,13 @@
         </div>
 
         <div class="issue">
+          <div class="issue-hd"><span class="sev high"></span>自動儲存只存到車輛檔，馬達檔不見（或兩個都沒有）</div>
+          <div class="issue-body">
+            <div class="row"><b>原因</b><span>自動儲存由計時器觸發、不是使用者點擊，且一次連續下載 2 個檔案，瀏覽器會把它當成「網站自動下載多個檔案」而攔下第二個（有時連第一個也攔），並在網址列跳出允許／封鎖提示。網頁無法得知下載是否成功，送出下載後緩衝就會清空，<b>被攔下的那一段資料無法找回</b>。</span></div>
+            <div class="row"><b>處理</b><span>開始長時間錄製前先確認：第 1 段自動儲存後，狀態記錄會提醒檢查下載清單；若只看到一個檔案，點網址列右側的下載封鎖圖示選「一律允許」，或到網站設定（Chrome：<code>chrome://settings/content/automaticDownloads</code>）把本網站加入允許清單。允許後瀏覽器會記住，之後不再詢問；換電腦、換瀏覽器設定檔或手機第一次使用時需要再確認一次。若瀏覽器設成「每次下載前詢問儲存位置」，每段都會跳出存檔視窗，無人看管時按取消或沒按同樣會遺失資料，長時間錄製前建議關閉這個設定。</span></div>
+          </div>
+        </div>
+        <div class="issue">
           <div class="issue-hd"><span class="sev mid"></span>找不到自動儲存匯出的 CSV 檔案</div>
           <div class="issue-body">
             <div class="row"><b>原因</b><span>匯出使用瀏覽器原生下載，不是寫入專案資料夾。</span></div>
@@ -1012,8 +1045,8 @@
         </div>
 
         <h3>Recording Mode 批次封包</h3>
-        <p>以 <code>0xFD</code> 開關（手機 → 裝置），開啟後裝置改送 <code>command(1) + length(1) +
-          payload(length)</code> 的批次，兩種批次型別總長度並不相同：</p>
+        <p>以 <code>[0xFD][0x01][mode]</code> 開關（手機 → 裝置；mode <code>0x01</code> = 一般記錄、<code>0x02</code> = MTS記錄、
+          <code>0x00</code> = 關閉），開啟後裝置改送 <code>command(1) + length(1) + payload(length)</code> 的批次，各批次型別總長度並不相同：</p>
         <div class="grid2">
           <div class="feat">
             <h4><span class="tag">0xFD</span> 車輛狀態批次</h4>
@@ -1023,6 +1056,11 @@
           <div class="feat">
             <h4><span class="tag">0xFE</span> 馬達 Id/Iq 批次</h4>
             <p>總長 242 bytes（payload 240 bytes）= 24 筆 × 10 bytes：計數、轉子角度、Id、Iq、Vd_cmd、Vq_cmd。</p>
+          </div>
+          <div class="feat">
+            <h4><span class="tag">0xF9</span> 力矩感測器批次</h4>
+            <p>只在 mode <code>0x02</code> 出現。總長 242 bytes（payload 240 bytes）= 24 筆 × 10 bytes：count(u16)、Torque(u16, 10-bit)、
+              MotorSpeed(u16, 14-bit)、Temp(u8)、Cadence(u8)、Gear(u8)、PedalWake(u8)，皆為 little-endian。</p>
           </div>
         </div>
         <div class="callout warn" style="margin-top:14px">
@@ -1052,6 +1090,37 @@
         <div class="sec-hd"><span class="sec-num">14</span><h2>版本紀錄</h2></div>
         <p class="sec-desc">本手冊隨介面調整而更新，以下記錄每次修訂新增或變更的內容，由新到舊排列。</p>
         <div class="changelog">
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v3.0</span><span class="change-date">2026-11-02</span></div>
+            <div class="change-body">
+              <h4>新增第二種記錄模式：Motor Torque Sensor</h4>
+              <ul>
+                <li>「⏺ 開始記錄」左側新增模式選單，可選「一般記錄」或「MTS記錄」（Motor Torque Sensor），記錄期間鎖定（第 4、10 節）。</li>
+                <li>MTS記錄對應韌體的 mode <code>0x02</code> 與 <code>0xF9</code> 批次，只錄 <code>0x18F50133</code> 廣播；新增「力矩」批次計數、「匯出CSV MTS」、Motor Torque Sensor 批次 Debug 方塊；原本的匯出按鈕改名為「匯出CSV Ebike」「匯出CSV IdIq」；自動儲存會輸出 <code>MTS_seg*.csv</code>，車輛狀態 CSV 檔名由 <code>vehicle_status_*</code> 改為 <code>Ebike_status_*</code>（第 6、10 節）。</li>
+                <li>MTS記錄期間 Motor Torque Sensor 卡片與 RX 筆數跟著批次更新，比對表改列 TS 欄位，count 跳號時在狀態記錄提示遺失筆數（第 7、10 節）。</li>
+                <li>協定附錄補上 mode byte 與 <code>0xF9</code> 批次格式（第 13 節）。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v2.9</span><span class="change-date">2026-10-29</span></div>
+            <div class="change-body">
+              <h4>力矩感測器區塊改名</h4>
+              <ul>
+                <li>主卡片區下方的力矩感測器區塊標題由「Torque Sensor」改為「Motor Torque Sensor · 0x18F50133」（第 7 節）。暫存器位元 bit8 Torque Sensor Error 屬控制器故障旗標，名稱不變。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="change-entry">
+            <div class="change-meta"><span class="change-ver">v2.8</span><span class="change-date">2026-10-14</span></div>
+            <div class="change-body">
+              <h4>自動儲存的多檔下載提醒</h4>
+              <ul>
+                <li>開始記錄（有勾自動儲存）時，狀態記錄提醒瀏覽器若詢問「下載多個檔案」需選允許；第 1 段自動儲存後再提醒檢查下載清單是否有兩個檔案。「自動儲存」勾選框加上說明提示。</li>
+                <li>第 10 節自動儲存說明補上多檔下載注意事項；第 12 節新增「自動儲存只存到車輛檔，馬達檔不見」疑難排解。</li>
+              </ul>
+            </div>
+          </div>
           <div class="change-entry">
             <div class="change-meta"><span class="change-ver">v2.7</span><span class="change-date">2026-10-14</span></div>
             <div class="change-body">

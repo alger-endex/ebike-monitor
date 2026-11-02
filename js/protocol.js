@@ -84,8 +84,9 @@ function buildTorqueSensorBusCmd(cmd) {
 
 // ── Recording Mode ────────────────────────────────────────────
 // 開啟後裝置停止逐筆 0xFA CAN frame notify，改送批次封包：
-// command[1] + length[1] + payload[length]。兩種批次型別長度不同
-// （車輛 212 bytes 總長 / 馬達 242 bytes 總長），依 length byte 動態切幀。
+// command[1] + length[1] + payload[length]。批次型別長度不同
+// （車輛 212 bytes 總長 / 馬達、力矩感測器 242 bytes 總長），依 length byte 動態切幀。
+// 兩種錄製模式互斥：一般錄製送 0xFD + 0xFE，力矩感測器錄製只送 0xF9。
 // 見 recording_mode_protocol.md。
 
 // Recording mode control（手機 → 裝置，write 方向）
@@ -95,12 +96,18 @@ const REC_CMD_BYTE = 0xFD;
 // 注意：REC_BATCH_VEHICLE 跟 REC_CMD_BYTE 數值相同(0xFD)但意義相反，方向不同，勿混淆
 const REC_BATCH_VEHICLE = 0xFD; // 車輛狀態批次，6 筆 x 35 bytes
 const REC_BATCH_MOTOR   = 0xFE; // 馬達 Id/Iq 批次，24 筆 x 10 bytes
+const REC_BATCH_MTS     = 0xF9; // 力矩感測器批次，24 筆 x 10 bytes（只在 REC_MODE_MTS 出現）
 
-function buildRecordingModeCmd(enable) {
+// Recording mode（buildRecordingModeCmd 的 byte2）
+const REC_MODE_OFF    = 0x00;
+const REC_MODE_NORMAL = 0x01; // 一般錄製：0xFD 車輛 + 0xFE 馬達 Id/Iq
+const REC_MODE_MTS    = 0x02; // 力矩感測器錄製：只送 0xF9（0x18F50133 廣播）
+
+function buildRecordingModeCmd(mode) {
   const p = new Uint8Array(15);
   p[0] = REC_CMD_BYTE;
   p[1] = 0x01;
-  p[2] = enable ? 0x01 : 0x00;
+  p[2] = mode & 0xFF;
   return p;
 }
 
@@ -151,6 +158,28 @@ function parseMotorIdIqBatch(payload, length) {
       iq:    view.getUint16(off + 6, true),
       vdCmd: view.getUint8(off + 8),
       vqCmd: view.getUint8(off + 9),
+    });
+  }
+  return samples;
+}
+
+// 力矩感測器溫度：原始值 0~210 對應 -30~180°C，> 210 無效
+function tsRawTempC(raw) { return raw <= 210 ? raw - 30 : null; }
+
+// payload: Uint8Array(length)，length: 恆 240，24 筆 x 10 bytes
+// 欄位已由韌體從 0x18F50133 拆好（D0=0xFF 且 checksum 通過才收）；tempC 已換算成 °C（原始值 − 30），原始值 > 210 無效存 null，CSV 輸出為空白
+function parseTorqueSensorBatch(payload, length) {
+  const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  const samples = [];
+  for (let off = 0; off + 10 <= length; off += 10) {
+    samples.push({
+      count:      view.getUint16(off + 0, true),
+      torque:     view.getUint16(off + 2, true),
+      motorSpeed: view.getUint16(off + 4, true),
+      tempC:      tsRawTempC(view.getUint8(off + 6)),
+      cadence:    view.getUint8(off + 7),
+      gear:       view.getUint8(off + 8),
+      pedalWake:  view.getUint8(off + 9),
     });
   }
   return samples;

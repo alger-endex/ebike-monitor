@@ -30,6 +30,10 @@
   <div class="sep"></div>
   <label class="chk-label"><input type="checkbox" id="chkPushAssist"><span>助行</span></label>
   <button id="btnDrvMonitor"   class="btn btn-action">▶ 強制啟動</button>
+  <select id="selRecMode" class="cmd-sel" title="記錄模式：一般 = 車輛狀態 + 馬達 Id/Iq；MTS = 只錄 Motor Torque Sensor 0x18F50133 廣播。兩者互斥，記錄中不能切換">
+    <option value="1">一般記錄</option>
+    <option value="2">MTS記錄</option>
+  </select>
   <button id="btnRecordingMode" class="btn btn-action">⏺ 開始記錄</button>
   <div class="sep"></div>
   <a id="btnManual" class="btn" href="manual.html" target="_blank" rel="noopener">📖 操作說明書</a>
@@ -137,14 +141,16 @@
     <span class="tick-lbl">記錄批次：</span>
     <span id="recVehicleBatchCount" class="mv-counter">車輛: 0</span>
     <span id="recMotorBatchCount"   class="mv-counter">馬達: 0</span>
+    <span id="recMtsBatchCount"     class="mv-counter">力矩: 0</span>
   </span>
   <button id="btnRecReset" class="btn btn-warn">清除記錄</button>
-  <button id="btnExportRecVehicleCsv" class="btn">匯出車輛 CSV</button>
-  <button id="btnExportRecMotorCsv"   class="btn">匯出馬達 CSV</button>
+  <button id="btnExportRecVehicleCsv" class="btn">匯出CSV Ebike</button>
+  <button id="btnExportRecMotorCsv"   class="btn">匯出CSV IdIq</button>
+  <button id="btnExportRecMtsCsv"     class="btn">匯出CSV MTS</button>
   <button id="btnBatteryInfo" class="btn">🔋 電池資訊</button>
   <div class="sep"></div>
   <span class="stat-group">
-    <label class="chk-label"><input type="checkbox" id="chkRecAutoSave" checked><span>自動儲存</span></label>
+    <label class="chk-label" title="每段會連續下載 2 個 CSV；瀏覽器詢問「下載多個檔案」時請選允許，否則該段資料會遺失"><input type="checkbox" id="chkRecAutoSave" checked><span>自動儲存</span></label>
     <label class="chk-label"><span>間隔</span>
       <input type="number" id="recAutoSaveInterval" min="1" max="120" value="15" class="cmd-num">
       <span>分</span>
@@ -183,7 +189,7 @@
 
   <!-- 力矩感測器 0x18F50133（主動廣播） -->
   <div class="drv-reg-box ts-group">
-    <div class="drv-reg-title">Torque Sensor · 0x18F50133</div>
+    <div class="drv-reg-title">Motor Torque Sensor · 0x18F50133</div>
     <div class="ts-stats">
       <span class="stat-group"><span class="tick-lbl">RX：</span>  <span id="tsRxCount"     class="mv-counter">0</span></span>
       <span class="stat-group"><span class="tick-lbl">間隔：</span><span id="tsIntervalLast" class="mv-counter">— ms</span></span>
@@ -278,7 +284,7 @@
   <!-- Recording Mode Debug（最新一筆批次的原始 bytes + 解析結果） -->
   <div class="rec-debug">
     <div class="rec-debug-box">
-      <div class="rec-debug-title">車輛狀態批次 Debug（最新一筆）</div>
+      <div class="rec-debug-title">Ebike 狀態批次 Debug（最新一筆）</div>
       <pre id="recDebugVehicleRaw" class="rec-debug-raw">尚未收到資料</pre>
       <pre id="recDebugVehicleParsed" class="rec-debug-parsed">—</pre>
     </div>
@@ -286,6 +292,11 @@
       <div class="rec-debug-title">馬達 Id/Iq 批次 Debug（最新一筆）</div>
       <pre id="recDebugMotorRaw" class="rec-debug-raw">尚未收到資料</pre>
       <pre id="recDebugMotorParsed" class="rec-debug-parsed">—</pre>
+    </div>
+    <div class="rec-debug-box">
+      <div class="rec-debug-title">Motor Torque Sensor 批次 Debug（最新一筆）</div>
+      <pre id="recDebugMtsRaw" class="rec-debug-raw">尚未收到資料</pre>
+      <pre id="recDebugMtsParsed" class="rec-debug-parsed">—</pre>
     </div>
   </div>
 

@@ -27,8 +27,12 @@ const RX_AVG_SAMPLES  = 10;
 let recordingModeActive  = false;
 let recVehicleBatchCount = 0;
 let recMotorBatchCount   = 0;
+let recMtsBatchCount     = 0;
 let recVehicleLog        = []; // CSV 用，累積直到手動清除或自動儲存輪替
 let recMotorLog          = [];
+let recMtsLog            = []; // 力矩感測器錄製（REC_MODE_MTS）的樣本
+let recMode              = REC_MODE_OFF; // 目前開啟的錄製模式，開始記錄時從 #selRecMode 取
+let recMtsLastCount      = -1; // 上一筆 0xF9 樣本的 count，用來偵測掉批
 let recAutoSaveTimer     = null;
 let recLastSaveAt        = 0;
 let recSegmentIndex      = 1;
@@ -108,17 +112,44 @@ ble.onRecordingBatch = (command, length, payload) => {
     recMotorLog.push(...samples);
     if (samples.length) drvUpdateRecordingMotor(samples[samples.length - 1]);
     updateRecDebug('Motor', command, length, payload, samples[0]);
+  } else if (command === REC_BATCH_MTS) {
+    const samples = parseTorqueSensorBatch(payload, length);
+    recMtsBatchCount++;
+    recMtsLog.push(...samples);
+    recMtsCheckCount(samples);
+    // 卡片與 Debug 解析列都顯示這批的最後一筆，數值、單位一致
+    const last = samples[samples.length - 1];
+    if (last) drvUpdateRecordingTorqueSensor(last);
+    tsRxCount += samples.length; // 每筆樣本 = 一筆通過檢查的 0x18F50133 廣播
+    drvSet('tsRxCount', tsRxCount);
+    updateRecDebug('Mts', command, length, payload, last && tsSampleDisplay(last));
   }
-  document.getElementById('recVehicleBatchCount').textContent = '車輛: ' + recVehicleBatchCount;
-  document.getElementById('recMotorBatchCount').textContent   = '馬達: ' + recMotorBatchCount;
+  updateRecBatchCounters();
   renderRecCompareTable();
 };
+
+function updateRecBatchCounters() {
+  document.getElementById('recVehicleBatchCount').textContent = '車輛: ' + recVehicleBatchCount;
+  document.getElementById('recMotorBatchCount').textContent   = '馬達: ' + recMotorBatchCount;
+  document.getElementById('recMtsBatchCount').textContent     = '力矩: ' + recMtsBatchCount;
+}
+
+// 韌體每收一筆有效廣播 count +1；rec_tx_queue 滿時整批 24 筆會被丟掉，這裡就會看到 count 跳號
+function recMtsCheckCount(samples) {
+  for (const s of samples) {
+    if (recMtsLastCount >= 0) {
+      const gap = (s.count - recMtsLastCount - 1) & 0xFFFF;
+      if (gap) log('⚠ MTS記錄 count 不連續：' + recMtsLastCount + ' → ' + s.count + '（遺失 ' + gap + ' 筆）');
+    }
+    recMtsLastCount = s.count;
+  }
+}
 
 function bytesToHex(bytes) {
   return Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 }
 
-// kind: 'Vehicle' | 'Motor' — 對應 recDebug{kind}Raw / recDebug{kind}Parsed 的 DOM id
+// kind: 'Vehicle' | 'Motor' | 'Mts' — 對應 recDebug{kind}Raw / recDebug{kind}Parsed 的 DOM id
 function updateRecDebug(kind, command, length, payload, firstSample) {
   const rawEl    = document.getElementById('recDebug' + kind + 'Raw');
   const parsedEl = document.getElementById('recDebug' + kind + 'Parsed');
@@ -285,19 +316,27 @@ document.getElementById('btnRecordingMode').addEventListener('click', async () =
 });
 
 async function startRecordingMode() {
+  const mode = Number(document.getElementById('selRecMode').value);
   stopDrvMonitor();
   stopMotorVectorMonitor();
+  recMode = mode;
   captureRecBaseline();
   try {
-    await ble.write(buildRecordingModeCmd(true));
-  } catch (e) { alert('開啟記錄模式失敗：' + (e.message || e)); return; }
+    await ble.write(buildRecordingModeCmd(mode));
+  } catch (e) { recMode = REC_MODE_OFF; alert('開啟記錄模式失敗：' + (e.message || e)); return; }
   ble.setRecordingMode(true);
   recordingModeActive = true;
+  recMtsLastCount = -1; // 韌體每次開啟都從 count 1 重新開始
   setRecordingButtonsDisabled(true);
   const btn = document.getElementById('btnRecordingMode');
   btn.textContent = '⏹ 停止記錄';
   btn.classList.replace('btn-action', 'btn-danger');
-  log('記錄模式已開啟');
+  log('記錄模式已開啟：' + (mode === REC_MODE_MTS ? 'Motor Torque Sensor（0xF9 批次）' : '一般（車輛 + 馬達 Id/Iq）'));
+  // 力矩感測器錄製每段只下載 1 個檔案，不會觸發「下載多個檔案」
+  if (mode === REC_MODE_NORMAL && document.getElementById('chkRecAutoSave').checked) {
+    log('提醒：自動儲存每次會連續下載 2 個 CSV。若瀏覽器詢問「下載多個檔案」請選「允許」，' +
+        '否則被擋下的那一段資料會遺失（下載送出後緩衝即清空）');
+  }
 
   recSegmentIndex = 1;
   recLastSaveAt = Date.now();
@@ -305,9 +344,10 @@ async function startRecordingMode() {
 }
 
 async function stopRecordingMode() {
-  try { await ble.write(buildRecordingModeCmd(false)); } catch { /* 忽略斷線時的寫入失敗 */ }
+  try { await ble.write(buildRecordingModeCmd(REC_MODE_OFF)); } catch { /* 忽略斷線時的寫入失敗 */ }
   ble.setRecordingMode(false);
   recordingModeActive = false;
+  recMode = REC_MODE_OFF;
   setRecordingButtonsDisabled(false);
   const btn = document.getElementById('btnRecordingMode');
   btn.textContent = '⏺ 開始記錄';
@@ -320,12 +360,23 @@ async function stopRecordingMode() {
 function setRecordingButtonsDisabled(disabled) {
   document.getElementById('btnDrvMonitor').disabled = disabled;
   document.getElementById('btnMotorVectorMonitor').disabled = disabled;
+  document.getElementById('selRecMode').disabled = disabled; // 錄製中不能切模式，先停止再換
 }
+
+// 力矩感測器錄製模式下只比對 TS 卡片，車輛卡片/暫存器在這個模式不會更新
+const REC_COMPARE_FIELDS_MTS = [
+  { id: 'tsTemp',       label: 'TS Temp' },
+  { id: 'tsTorque',     label: 'TS Torque' },
+  { id: 'tsCadence',    label: 'TS Cadence' },
+  { id: 'tsMotorSpeed', label: 'TS Motor Spd' },
+  { id: 'tsGear',       label: 'TS Gear' },
+  { id: 'tsPedalWake',  label: 'TS Pedal' },
+];
 
 // 凍結進入記錄模式那一刻的卡片數值，當作跟記錄批次比對的基準
 function captureRecBaseline() {
-  const snap = {};
-  REC_COMPARE_FIELDS.forEach(f => { snap[f.id] = document.getElementById(f.id).textContent; });
+  const snap = { _fields: recMode === REC_MODE_MTS ? REC_COMPARE_FIELDS_MTS : REC_COMPARE_FIELDS };
+  snap._fields.forEach(f => { snap[f.id] = document.getElementById(f.id).textContent; });
   snap._regFault  = _regFault;
   snap._regStatus = _regStatus;
   recBaseline = snap;
@@ -335,10 +386,12 @@ function captureRecBaseline() {
 function renderRecCompareTable() {
   const tbody = document.getElementById('recCompareBody');
   if (!recBaseline) { tbody.innerHTML = ''; return; }
-  const rows = REC_COMPARE_FIELDS.map(f =>
+  const rows = recBaseline._fields.map(f =>
     recCompareRow(f.label, recBaseline[f.id], document.getElementById(f.id).textContent));
-  rows.push(recCompareRow('Fault Reg',  '0x' + recBaseline._regFault.toString(16).toUpperCase(),  '0x' + _regFault.toString(16).toUpperCase()));
-  rows.push(recCompareRow('Status Reg', '0x' + recBaseline._regStatus.toString(16).toUpperCase(), '0x' + _regStatus.toString(16).toUpperCase()));
+  if (recBaseline._fields === REC_COMPARE_FIELDS) {
+    rows.push(recCompareRow('Fault Reg',  '0x' + recBaseline._regFault.toString(16).toUpperCase(),  '0x' + _regFault.toString(16).toUpperCase()));
+    rows.push(recCompareRow('Status Reg', '0x' + recBaseline._regStatus.toString(16).toUpperCase(), '0x' + _regStatus.toString(16).toUpperCase()));
+  }
   tbody.innerHTML = rows.join('');
 }
 
@@ -350,6 +403,7 @@ function recCompareRow(label, baseline, latest) {
 
 function resetRecordingModeUi() {
   recordingModeActive = false;
+  recMode = REC_MODE_OFF;
   setRecordingButtonsDisabled(false);
   const btn = document.getElementById('btnRecordingMode');
   btn.textContent = '⏺ 開始記錄';
@@ -372,7 +426,7 @@ function autoSaveAndRotate() {
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
   let saved = false;
   if (recVehicleLog.length) {
-    downloadCsv('vehicle_status_seg' + recSegmentIndex + '_' + ts + '.csv', recVehicleLog);
+    downloadCsv('Ebike_status_seg' + recSegmentIndex + '_' + ts + '.csv', recVehicleLog);
     recVehicleLog = [];
     saved = true;
   }
@@ -381,11 +435,17 @@ function autoSaveAndRotate() {
     recMotorLog = [];
     saved = true;
   }
+  if (recMtsLog.length) {
+    downloadCsv('MTS_seg' + recSegmentIndex + '_' + ts + '.csv', recMtsLog);
+    recMtsLog = [];
+    saved = true;
+  }
   if (saved) {
-    recVehicleBatchCount = 0; recMotorBatchCount = 0;
-    document.getElementById('recVehicleBatchCount').textContent = '車輛: 0';
-    document.getElementById('recMotorBatchCount').textContent   = '馬達: 0';
+    recVehicleBatchCount = 0; recMotorBatchCount = 0; recMtsBatchCount = 0;
+    updateRecBatchCounters();
     log('自動儲存：已匯出第 ' + recSegmentIndex + ' 段記錄並清空緩衝');
+    // 網頁無法得知下載是否真的成功，第一段時請使用者親自確認，之後瀏覽器會記住「允許」
+    if (recSegmentIndex === 1 && recMode === REC_MODE_NORMAL) log('⚠ 請確認瀏覽器下載清單中車輛、馬達兩個檔案都有出現，沒有的話請在網址列允許此網站下載多個檔案');
     recSegmentIndex++;
   }
   recLastSaveAt = Date.now();
@@ -425,13 +485,35 @@ function drvUpdateRecordingMotor(s) {
   drvSet('drvVqCmd', s.vqCmd);
 }
 
+// 批次樣本沒有 checksum 欄位（韌體驗證過才收），TS Checksum 卡片維持記錄前的值
+function drvUpdateRecordingTorqueSensor(s) {
+  drvSet('tsTemp',       s.tempC ?? '—');
+  drvSet('tsTorque',     s.torque);
+  drvSet('tsCadence',    s.cadence);
+  drvSet('tsMotorSpeed', s.motorSpeed);
+  drvSet('tsGear',       s.gear);
+  drvSet('tsPedalWake',  s.pedalWake);
+}
+
+// Debug 解析列用卡片的名稱，方便跟上方卡片對照
+function tsSampleDisplay(s) {
+  return {
+    count:          s.count,
+    'TS Temp':      s.tempC === null ? '—' : s.tempC + '°C',
+    'TS Torque':    s.torque,
+    'TS Cadence':   s.cadence,
+    'TS Motor Spd': s.motorSpeed,
+    'TS Gear':      s.gear,
+    'TS Pedal':     s.pedalWake,
+  };
+}
+
 document.getElementById('btnRecReset').addEventListener('click', () => {
-  const n = recVehicleLog.length + recMotorLog.length;
+  const n = recVehicleLog.length + recMotorLog.length + recMtsLog.length;
   if (n && !confirm('將清除尚未匯出的 ' + n + ' 筆記錄樣本，清除後無法復原。\n確定要清除嗎？')) return;
-  recVehicleBatchCount = 0; recMotorBatchCount = 0;
-  recVehicleLog = []; recMotorLog = [];
-  document.getElementById('recVehicleBatchCount').textContent = '車輛: 0';
-  document.getElementById('recMotorBatchCount').textContent   = '馬達: 0';
+  recVehicleBatchCount = 0; recMotorBatchCount = 0; recMtsBatchCount = 0;
+  recVehicleLog = []; recMotorLog = []; recMtsLog = [];
+  updateRecBatchCounters();
 });
 
 function downloadCsv(filename, rows) {
@@ -447,10 +529,13 @@ function downloadCsv(filename, rows) {
 }
 
 document.getElementById('btnExportRecVehicleCsv').addEventListener('click', () => {
-  downloadCsv('vehicle_status_' + Date.now() + '.csv', recVehicleLog);
+  downloadCsv('Ebike_status_' + Date.now() + '.csv', recVehicleLog);
 });
 document.getElementById('btnExportRecMotorCsv').addEventListener('click', () => {
   downloadCsv('motor_idiq_' + Date.now() + '.csv', recMotorLog);
+});
+document.getElementById('btnExportRecMtsCsv').addEventListener('click', () => {
+  downloadCsv('MTS_' + Date.now() + '.csv', recMtsLog);
 });
 
 // ── Driver Status monitoring loop ──────────────────────────────
@@ -613,7 +698,7 @@ document.getElementById('btnTsBusResume').addEventListener('click', () => tsSend
 // 力矩 10-bit = D4 高 2 位 + D2；馬達轉速 14-bit = D4 低 6 位 + D5
 // D6：bit7 = 踩踏板開機識別，bit6..0 = 變速檔位
 function drvUpdateTorqueSensor(d) {
-  drvSet('tsTemp',       d[1] <= 210 ? d[1] - 30 : '—');
+  drvSet('tsTemp',       tsRawTempC(d[1]) ?? '—');
   drvSet('tsTorque',     ((d[4] >> 6) << 8) | d[2]);
   drvSet('tsCadence',    d[3]);
   drvSet('tsMotorSpeed', ((d[4] & 0x3F) << 8) | d[5]);
@@ -888,7 +973,7 @@ document.querySelectorAll('.page-tab').forEach(tab => {
 // ── 離開頁面前提醒：還有沒匯出的記錄 ──────────────────────────
 
 window.addEventListener('beforeunload', (e) => {
-  if (!recVehicleLog.length && !recMotorLog.length) return;
+  if (!recVehicleLog.length && !recMotorLog.length && !recMtsLog.length) return;
   e.preventDefault();
   e.returnValue = ''; // 舊版 Chrome 需要設定 returnValue 才會跳出提示
 });

@@ -260,8 +260,8 @@ class BleManager {
   }
 
   // 每筆為 command(1) + length(1) + payload(length)，總長度依 length 而定
-  // （車輛批次實際上只有 210 bytes payload / 212 bytes 總長，馬達批次為 240 / 242，
-  // 兩者不同長，不可假設定長 242；無 magic byte 可 resync，見 recording_mode_protocol.md §3）
+  // （車輛批次實際上只有 210 bytes payload / 212 bytes 總長，馬達、力矩感測器批次為 240 / 242，
+  // 長度不一，不可假設定長 242；無 magic byte 可 resync，見 recording_mode_protocol.md §3）
   _dispatchRecordingFrames() {
     while (this._rxBuf.length >= 2) {
       const command = this._rxBuf[0];
